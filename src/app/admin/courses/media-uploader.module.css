@@ -1,6 +1,7 @@
 .uploader {
   display: grid;
   min-width: 0;
+  grid-template-columns: minmax(0, 1fr);
   gap: 14px;
 }
 
@@ -64,15 +65,25 @@
 .videoPreview,
 .emptyPreview {
   width: 100%;
-  aspect-ratio: 16 / 9;
   border: 1px dashed rgba(163, 177, 196, 0.36);
   border-radius: 7px;
   background-color: rgba(3, 9, 16, 0.58);
 }
 
 .imagePreview {
+  aspect-ratio: 2 / 3;
   background-position: center;
-  background-size: cover;
+  background-repeat: no-repeat;
+  background-size: contain;
+}
+
+.videoPreview,
+.emptyPreview {
+  aspect-ratio: 16 / 9;
+}
+
+.posterPreview {
+  aspect-ratio: 2 / 3;
 }
 
 .videoPreview {

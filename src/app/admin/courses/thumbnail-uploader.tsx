@@ -203,6 +203,7 @@ function MediaUploader({
         <div
           aria-label={`${label} 미리보기`}
           className={styles.imagePreview}
+          data-preview="poster"
           role="img"
           style={{ backgroundImage: `url(${url})` }}
         />
@@ -213,7 +214,9 @@ function MediaUploader({
       ) : null}
 
       {!url ? (
-        <div className={styles.emptyPreview}>
+        <div
+          className={`${styles.emptyPreview} ${preview === 'image' ? styles.posterPreview : ''}`}
+          data-preview={preview === 'image' ? 'poster' : 'video'}>
           <span aria-hidden="true">VR</span>
           <strong>{emptyLabel}</strong>
           <small>{accept.includes('image') ? 'JPG · PNG' : 'MP4 · WEBM'}</small>
