@@ -2,7 +2,6 @@ import { ArrowLeft, Info, Save, UploadCloud } from 'lucide-react';
 import Link from 'next/link';
 
 import { VideoRoomShell } from '@/components/video-room/VideoRoomShell';
-import { StaffCat } from '@/components/video-room/VideoRoomVisuals';
 import { requireAdmin } from '@/lib/auth/server';
 
 import styles from '../../admin-video-room.module.css';
@@ -129,15 +128,6 @@ export default async function NewCoursePage({
             </button>
           </footer>
         </form>
-
-        <aside className={styles.registrationCat}>
-          <StaffCat />
-          <p>
-            새로운 이야기가 들어오면
-            <br />
-            제가 선반에 잘 정리해 둘게요.
-          </p>
-        </aside>
       </main>
     </VideoRoomShell>
   );
