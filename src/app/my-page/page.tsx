@@ -4,7 +4,7 @@ import Link from 'next/link';
 import styles from '@/app/video-room-pages.module.css';
 import { VideoRoomShell } from '@/components/video-room/VideoRoomShell';
 import { StaffCat, VideoCase } from '@/components/video-room/VideoRoomVisuals';
-import { requireUser } from '@/lib/auth/server';
+import { getUserProfile, requireUser } from '@/lib/auth/server';
 import { partitionMyBagTitles } from '@/lib/courses/video-room-pages';
 
 type CourseRow = {
@@ -29,6 +29,7 @@ export const dynamic = 'force-dynamic';
 
 export default async function MyPage() {
   const { supabase, user } = await requireUser();
+  const profile = await getUserProfile(supabase, user.id);
   const { data: enrollments } = await supabase
     .from('enrollments')
     .select('course_id, created_at')
@@ -87,7 +88,10 @@ export default async function MyPage() {
   }
 
   return (
-    <VideoRoomShell activeItem="my-page" bagCount={orderedTitles.length}>
+    <VideoRoomShell
+      activeItem="my-page"
+      bagCount={orderedTitles.length}
+      isAdmin={profile.role === 'admin'}>
       <header className={styles.myPageHeader}>
         <div>
           <h1>MY BAG</h1>

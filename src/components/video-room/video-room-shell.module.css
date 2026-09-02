@@ -8,7 +8,8 @@
   --vr-violet: #8f77ef;
   --vr-pink: #f05b87;
   --vr-amber: #e4a259;
-  --vr-display: 'Bahnschrift Condensed', 'Arial Narrow', 'Noto Sans KR', sans-serif;
+  --vr-display:
+    'Bahnschrift Condensed', 'Arial Narrow', 'Noto Sans KR', sans-serif;
   display: grid;
   width: 100%;
   min-width: 0;
@@ -29,7 +30,11 @@
   overflow: hidden auto;
   border-right: 1px solid var(--vr-border);
   background:
-    radial-gradient(circle at 50% 8%, rgba(123, 91, 197, 0.12), transparent 28%),
+    radial-gradient(
+      circle at 50% 8%,
+      rgba(123, 91, 197, 0.12),
+      transparent 28%
+    ),
     #07111e;
   padding: 24px 20px 18px;
 }
@@ -92,7 +97,9 @@
   font-size: 0.9rem;
   font-weight: 750;
   text-decoration: none;
-  transition: background 180ms ease-out, color 180ms ease-out;
+  transition:
+    background 180ms ease-out,
+    color 180ms ease-out;
 }
 
 .navigation a:hover,
@@ -109,6 +116,77 @@
 
 .navigation .active svg {
   color: #ff6f9d;
+}
+
+.shopShell {
+  grid-template-columns: 280px minmax(0, 1fr);
+}
+
+.shopSidebar {
+  border-right-color: rgba(167, 107, 223, 0.24);
+  background:
+    linear-gradient(180deg, rgba(15, 20, 32, 0.97), rgba(4, 7, 11, 0.99)),
+    #070a10;
+  padding: 26px 22px 18px;
+}
+
+.shopSidebar .brand {
+  min-height: 104px;
+  align-content: center;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.shopSidebar .brand span {
+  font-size: 2rem;
+  font-weight: 800;
+  letter-spacing: 0.035em;
+  line-height: 1;
+  text-shadow:
+    0 0 5px rgba(255, 104, 161, 0.95),
+    0 0 18px rgba(237, 84, 124, 0.72),
+    0 0 34px rgba(166, 107, 223, 0.42);
+}
+
+.shopSidebar .brand small {
+  margin-top: 13px;
+  color: #d5bddf;
+  font-size: 0.73rem;
+  font-weight: 700;
+  letter-spacing: 0.035em;
+}
+
+.shopSidebar .navigation {
+  gap: 3px;
+  margin-top: 20px;
+}
+
+.shopSidebar .navigation a {
+  min-height: 45px;
+  gap: 16px;
+  border-radius: 10px;
+  color: #d2cbc2;
+  padding: 0 17px;
+  font-size: 0.93rem;
+  font-weight: 650;
+  transition:
+    background-color 180ms ease-out,
+    color 180ms ease-out,
+    transform 180ms ease-out;
+}
+
+.shopSidebar .navigation a:hover,
+.shopSidebar .navigation a:focus-visible,
+.shopSidebar .navigation .active {
+  background: rgba(101, 76, 131, 0.42);
+  color: #ffcfdb;
+  transform: translateX(2px);
+}
+
+.shopSidebar .navigation .active svg {
+  color: #ed547c;
 }
 
 .catPanel {
@@ -254,8 +332,16 @@
   transform: translateY(-50%);
 }
 
-.vhsLabel strong { font-size: 0.9rem; font-weight: 900; white-space: nowrap; }
-.vhsLabel small { font-size: 0.58rem; font-weight: 850; letter-spacing: 0.12em; }
+.vhsLabel strong {
+  font-size: 0.9rem;
+  font-weight: 900;
+  white-space: nowrap;
+}
+.vhsLabel small {
+  font-size: 0.58rem;
+  font-weight: 850;
+  letter-spacing: 0.12em;
+}
 
 @container (max-width: 110px) {
   .vhsLabel {
@@ -303,7 +389,11 @@
 .caseShade {
   position: absolute;
   inset: 0;
-  background: linear-gradient(180deg, rgba(2, 6, 12, 0.04), rgba(2, 6, 12, 0.86));
+  background: linear-gradient(
+    180deg,
+    rgba(2, 6, 12, 0.04),
+    rgba(2, 6, 12, 0.86)
+  );
 }
 
 .caseArtwork strong,
@@ -339,7 +429,9 @@
 }
 
 @media (max-width: 1024px) {
-  .shell { display: block; }
+  .shell {
+    display: block;
+  }
   .sidebar {
     position: relative;
     display: grid;
@@ -353,10 +445,20 @@
     border-bottom: 1px solid var(--vr-border);
     padding: 12px 16px;
   }
-  .brand { min-height: 64px; }
-  .brand span { font-size: 1rem; }
-  .brand small { margin-top: 4px; font-size: 0.54rem; }
-  .staffLabel, .catPanel { display: none; }
+  .brand {
+    min-height: 64px;
+  }
+  .brand span {
+    font-size: 1rem;
+  }
+  .brand small {
+    margin-top: 4px;
+    font-size: 0.54rem;
+  }
+  .staffLabel,
+  .catPanel {
+    display: none;
+  }
   .navigation {
     display: flex;
     min-width: 0;
@@ -364,10 +466,67 @@
     margin: 0 12px;
     overflow-x: auto;
   }
-  .navigation a { min-width: max-content; min-height: 42px; padding: 0 12px; }
-  .logoutForm { margin: 0; }
-  .logoutForm button { width: 42px; padding: 0; }
-  .logoutForm button span { display: none; }
+  .navigation a {
+    min-width: max-content;
+    min-height: 42px;
+    padding: 0 12px;
+  }
+  .logoutForm {
+    margin: 0;
+  }
+  .logoutForm button {
+    width: 42px;
+    padding: 0;
+  }
+  .logoutForm button span {
+    display: none;
+  }
+
+  .shopSidebar {
+    display: flex;
+    min-height: auto;
+    padding: 14px 18px;
+  }
+  .shopSidebar .brand {
+    min-height: 62px;
+    justify-items: start;
+  }
+  .shopSidebar .brand span {
+    font-size: 1.4rem;
+  }
+  .shopSidebar .brand small {
+    margin-top: 7px;
+    font-size: 0.61rem;
+  }
+  .shopSidebar .navigation {
+    gap: 6px;
+    margin: 10px 0 0;
+    padding-bottom: 5px;
+    scrollbar-width: none;
+  }
+  .shopSidebar .navigation::-webkit-scrollbar {
+    display: none;
+  }
+  .shopSidebar .navigation a {
+    min-height: 40px;
+    padding: 0 13px;
+  }
+  .shopSidebar .navigation a svg {
+    width: 18px;
+  }
+  .shopSidebar .logoutForm {
+    position: absolute;
+    top: 22px;
+    right: 18px;
+    margin: 0;
+  }
+  .shopSidebar .logoutForm button {
+    width: auto;
+    padding: 0 10px;
+  }
+  .shopSidebar .logoutForm button span {
+    display: inline;
+  }
 }
 
 @media (max-width: 640px) {
@@ -375,15 +534,61 @@
     grid-template-columns: 136px minmax(0, 1fr);
     padding: 9px 10px;
   }
-  .brand { min-height: 54px; }
-  .brand span { font-size: 0.82rem; }
-  .brand small { display: none; }
-  .navigation { margin-right: 0; }
-  .navigation a { min-height: 38px; padding: 0 10px; }
-  .navigation a span { display: none; }
-  .logoutForm { display: none; }
+  .brand {
+    min-height: 54px;
+  }
+  .brand span {
+    font-size: 0.82rem;
+  }
+  .brand small {
+    display: none;
+  }
+  .navigation {
+    margin-right: 0;
+  }
+  .navigation a {
+    min-height: 38px;
+    padding: 0 10px;
+  }
+  .navigation a span {
+    display: none;
+  }
+  .logoutForm {
+    display: none;
+  }
+
+  .shopSidebar {
+    display: flex;
+    padding: 14px;
+  }
+  .shopSidebar .brand {
+    min-height: 62px;
+  }
+  .shopSidebar .brand span {
+    font-size: 1.4rem;
+  }
+  .shopSidebar .brand small {
+    display: block;
+  }
+  .shopSidebar .navigation {
+    margin-top: 10px;
+  }
+  .shopSidebar .navigation a {
+    min-height: 40px;
+    gap: 8px;
+    padding: 0 13px;
+    font-size: 0.78rem;
+  }
+  .shopSidebar .navigation a span {
+    display: inline;
+  }
+  .shopSidebar .logoutForm {
+    display: block;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .navigation a { transition: none; }
+  .navigation a {
+    transition: none;
+  }
 }

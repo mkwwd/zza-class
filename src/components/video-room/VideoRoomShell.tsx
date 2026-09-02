@@ -4,14 +4,10 @@ import {
   Clapperboard,
   Film,
   FolderOpen,
-  Heart,
-  History,
-  Home,
   LibraryBig,
   LogOut,
   Settings,
   UploadCloud,
-  UserRound,
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -40,11 +36,8 @@ type VideoRoomShellProps = {
 };
 
 const shopNavigation = [
-  { href: '/main', icon: Home, key: 'home', label: '홈' },
-  { href: '/courses', icon: Film, key: 'catalog', label: '새로운 작품' },
-  { href: '/my-page', icon: UserRound, key: 'my-page', label: '마이 페이지' },
-  { href: '/courses', icon: Heart, key: 'favorites', label: '찜한 작품' },
-  { href: '/my-page', icon: History, key: 'history', label: '시청 기록' },
+  { href: '/main', icon: Film, key: 'home', label: '홈' },
+  { href: '/my-page', icon: LibraryBig, key: 'my-page', label: '마이 페이지' },
 ] as const;
 
 const staffNavigation = [
@@ -68,10 +61,12 @@ export function VideoRoomShell({
   showStaffCat = true,
 }: VideoRoomShellProps) {
   const navigation = mode === 'staff' ? staffNavigation : shopNavigation;
+  const isShopMode = mode === 'shop';
 
   return (
-    <div className={styles.shell}>
-      <aside className={styles.sidebar}>
+    <div className={`${styles.shell} ${isShopMode ? styles.shopShell : ''}`}>
+      <aside
+        className={`${styles.sidebar} ${isShopMode ? styles.shopSidebar : ''}`}>
         <Link className={styles.brand} href="/main">
           <span>VIDEO ROOM</span>
           <small>SHORT VIDEO RENTAL SHOP</small>
@@ -92,7 +87,7 @@ export function VideoRoomShell({
               <span>{label}</span>
             </Link>
           ))}
-          {mode === 'shop' && isAdmin ? (
+          {isShopMode && isAdmin ? (
             <Link href="/admin">
               <Clapperboard aria-hidden="true" size={21} strokeWidth={1.65} />
               <span>편집실</span>

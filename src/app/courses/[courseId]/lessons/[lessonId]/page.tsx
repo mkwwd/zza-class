@@ -83,6 +83,7 @@ export default async function LessonPage({ params }: LessonPageProps) {
     <VideoRoomShell
       activeItem="history"
       bagCount={bagCount ?? 0}
+      isAdmin={profile.role === 'admin'}
       showStaffCat={false}>
       <header className={styles.utilityBar}>
         <Link className={styles.backLink} href={`/courses/${courseId}`}>

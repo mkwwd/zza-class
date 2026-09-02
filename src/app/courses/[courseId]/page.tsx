@@ -18,6 +18,7 @@ import {
   VideoCase,
   VhsTape,
 } from '@/components/video-room/VideoRoomVisuals';
+import { getUserProfile } from '@/lib/auth/server';
 import { getTapeDisplay } from '@/lib/courses/course-display';
 import { createClient, hasSupabaseEnv } from '@/lib/supabase/server';
 
@@ -41,6 +42,7 @@ export default async function CourseDetailPage({
   const {
     data: { user },
   } = await supabase.auth.getUser();
+  const profile = user ? await getUserProfile(supabase, user.id) : null;
   const { data: course } = await supabase
     .from('courses')
     .select('id, title, description, status, thumbnail_url')
@@ -80,6 +82,7 @@ export default async function CourseDetailPage({
     <VideoRoomShell
       activeItem="catalog"
       bagCount={bagCount ?? 0}
+      isAdmin={profile?.role === 'admin'}
       showStaffCat={false}>
       <header className={styles.utilityBar}>
         <Link className={styles.backLink} href="/main">
