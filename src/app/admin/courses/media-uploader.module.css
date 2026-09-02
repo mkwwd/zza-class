@@ -1,0 +1,150 @@
+.uploader {
+  display: grid;
+  min-width: 0;
+  gap: 14px;
+}
+
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.copy {
+  min-width: 0;
+}
+
+.copy p {
+  margin: 0;
+  color: #f3e9df;
+  font-size: 0.9rem;
+  font-weight: 850;
+}
+
+.copy span {
+  display: block;
+  margin-top: 6px;
+  color: #8490a1;
+  font-size: 0.74rem;
+  line-height: 1.65;
+}
+
+.chooseButton {
+  flex: 0 0 auto;
+  min-height: 38px;
+  border: 1px solid rgba(197, 141, 255, 0.48);
+  border-radius: 6px;
+  background: rgba(104, 64, 148, 0.18);
+  color: #d5b8ff;
+  padding: 0 14px;
+  font-size: 0.76rem;
+  font-weight: 850;
+  cursor: pointer;
+  transition: border-color 160ms ease, background-color 160ms ease, color 160ms ease;
+}
+
+.chooseButton:hover {
+  border-color: #e370ff;
+  background: rgba(145, 72, 188, 0.25);
+  color: #fff4ff;
+}
+
+.chooseButton:focus-visible {
+  outline: 2px solid #ff5e91;
+  outline-offset: 3px;
+}
+
+.chooseButton:disabled {
+  cursor: wait;
+  opacity: 0.58;
+}
+
+.imagePreview,
+.videoPreview,
+.emptyPreview {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border: 1px dashed rgba(163, 177, 196, 0.36);
+  border-radius: 7px;
+  background-color: rgba(3, 9, 16, 0.58);
+}
+
+.imagePreview {
+  background-position: center;
+  background-size: cover;
+}
+
+.videoPreview {
+  display: block;
+  object-fit: contain;
+}
+
+.emptyPreview {
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 8px;
+  color: #788497;
+  text-align: center;
+}
+
+.emptyPreview > span {
+  display: grid;
+  width: 46px;
+  aspect-ratio: 1;
+  place-items: center;
+  border: 1px solid rgba(222, 162, 89, 0.4);
+  color: #e2a259;
+  font-size: 0.67rem;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  transform: rotate(-3deg);
+}
+
+.emptyPreview strong {
+  color: #c6ccd4;
+  font-size: 0.78rem;
+}
+
+.emptyPreview small {
+  color: #616d7e;
+  font-size: 0.62rem;
+  font-weight: 750;
+  letter-spacing: 0.1em;
+}
+
+.url {
+  min-width: 0;
+  margin: 0;
+  overflow-wrap: anywhere;
+  border-left: 2px solid rgba(120, 245, 219, 0.52);
+  background: rgba(5, 12, 20, 0.58);
+  color: #7f8a9b;
+  padding: 9px 11px;
+  font-size: 0.66rem;
+  line-height: 1.5;
+}
+
+.message {
+  margin: 0;
+  color: #91d8c8;
+  font-size: 0.74rem;
+  line-height: 1.55;
+}
+
+@media (max-width: 540px) {
+  .header {
+    display: grid;
+  }
+
+  .chooseButton {
+    width: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chooseButton {
+    transition: none;
+  }
+}
