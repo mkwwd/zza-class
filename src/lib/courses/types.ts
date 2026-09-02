@@ -13,8 +13,6 @@ export type LessonFormInput = {
   content: string;
   videoUrl: string;
   sortOrder: number;
-  thumbnailUrl: string;
-  thumbnailImageId: string;
 };
 
 export type InitialEpisodeFormInput = Pick<

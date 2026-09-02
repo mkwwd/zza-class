@@ -53,7 +53,7 @@ export default async function CourseDetailPage({
 
   const { data: lessons } = await supabase
     .from('lessons')
-    .select('id, title, sort_order, thumbnail_url')
+    .select('id, title, sort_order')
     .eq('course_id', course.id)
     .order('sort_order', { ascending: true });
   const { data: enrollment } = user
@@ -194,20 +194,11 @@ export default async function CourseDetailPage({
                 const content = (
                   <>
                     <div className={styles.episodeVisual}>
-                      {lesson.thumbnail_url ? (
-                        <span
-                          aria-label={`${lesson.title} 회차 이미지`}
-                          role="img"
-                          style={{
-                            backgroundImage: `url(${lesson.thumbnail_url})`,
-                          }}
-                        />
-                      ) : (
-                        <VhsTape
-                          code={`EP-${String(lesson.sort_order).padStart(2, '0')}`}
-                          label="회차"
-                        />
-                      )}
+                      <VhsTape
+                        code={`EPISODE ${String(lesson.sort_order).padStart(2, '0')}`}
+                        label={`${lesson.sort_order}회`}
+                        orientation="horizontal"
+                      />
                     </div>
                     <div className={styles.episodeCopy}>
                       <span>

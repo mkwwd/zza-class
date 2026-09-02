@@ -39,7 +39,7 @@ export default async function EditCoursePage({
 
   const { data: lessons } = await supabase
     .from('lessons')
-    .select('id, title, sort_order, thumbnail_url, thumbnail_image_id')
+    .select('id, title, sort_order')
     .eq('course_id', course.id)
     .order('sort_order', { ascending: true });
   const lessonIds = (lessons ?? []).map((lesson) => lesson.id);
@@ -153,10 +153,6 @@ export default async function EditCoursePage({
                   description="MP4 또는 WebM 영상을 업로드합니다."
                   label="회차 영상"
                 />
-                <ThumbnailUploader
-                  description="회차 목록에 보이는 이미지입니다."
-                  label="회차 썸네일"
-                />
               </div>
               <label className={styles.fullField}>
                 <span>회차 설명</span>
@@ -218,12 +214,6 @@ export default async function EditCoursePage({
                             description="등록된 영상을 교체할 수 있습니다."
                             initialVideoUrl={content?.video_url}
                             label="회차 영상"
-                          />
-                          <ThumbnailUploader
-                            description="회차 목록의 대표 이미지입니다."
-                            initialImageId={lesson.thumbnail_image_id}
-                            initialImageUrl={lesson.thumbnail_url}
-                            label="회차 썸네일"
                           />
                         </div>
                         <label className={styles.fullField}>

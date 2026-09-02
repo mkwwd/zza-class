@@ -18,6 +18,7 @@ type VhsTapeProps = {
   className?: string;
   code?: string;
   label?: string;
+  orientation?: 'horizontal' | 'vertical';
 };
 
 export function StaffCat({ className, priority = false }: StaffCatProps) {
@@ -38,9 +39,13 @@ export function VhsTape({
   className,
   code = 'VR-000',
   label = '준비중',
+  orientation = 'vertical',
 }: VhsTapeProps) {
   return (
-    <span className={`${styles.vhsTape} ${className ?? ''}`} aria-hidden="true">
+    <span
+      aria-hidden="true"
+      className={`${styles.vhsTape} ${orientation === 'horizontal' ? styles.horizontalTape : ''} ${className ?? ''}`}
+      data-orientation={orientation}>
       <Image
         alt=""
         className={styles.vhsImage}

@@ -52,8 +52,6 @@ export function parseLessonForm(
       content: readString(formData, 'content'),
       videoUrl: readString(formData, 'videoUrl'),
       sortOrder: Number.isFinite(sortOrder) ? sortOrder : 0,
-      thumbnailUrl: readString(formData, 'thumbnailUrl'),
-      thumbnailImageId: readString(formData, 'thumbnailImageId'),
     },
   };
 }

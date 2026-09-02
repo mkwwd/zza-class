@@ -38,8 +38,6 @@ export async function createCourse(formData: FormData) {
       .insert({
         course_id: data.id,
         sort_order: parsedEpisode.value.sortOrder,
-        thumbnail_image_id: parsed.value.thumbnailImageId || null,
-        thumbnail_url: parsed.value.thumbnailUrl || null,
         title: parsedEpisode.value.title,
       })
       .select('id')
@@ -105,8 +103,6 @@ export async function addLesson(courseId: string, formData: FormData) {
     .insert({
       course_id: courseId,
       sort_order: parsed.value.sortOrder,
-      thumbnail_image_id: parsed.value.thumbnailImageId || null,
-      thumbnail_url: parsed.value.thumbnailUrl || null,
       title: parsed.value.title,
     })
     .select('id')
@@ -140,8 +136,6 @@ export async function updateLesson(
     .from('lessons')
     .update({
       sort_order: parsed.value.sortOrder,
-      thumbnail_image_id: parsed.value.thumbnailImageId || null,
-      thumbnail_url: parsed.value.thumbnailUrl || null,
       title: parsed.value.title,
       updated_at: new Date().toISOString(),
     })

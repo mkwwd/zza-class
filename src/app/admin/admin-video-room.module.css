@@ -288,7 +288,7 @@
 .newEpisodePanel > summary { display: flex; min-height: 52px; cursor: pointer; align-items: center; gap: 9px; color: #d3c9f5; padding: 0 17px; font-size: 0.78rem; font-weight: 850; }
 .newEpisodePanel > form { display: grid; gap: 18px; border-top: 1px solid rgba(145,169,194,0.16); padding: 20px; }
 .episodeFieldRow { display: grid; grid-template-columns: minmax(0,1fr) 120px; gap: 14px; }
-.episodeMediaGrid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.episodeMediaGrid { display: grid; grid-template-columns: 1fr; gap: 14px; }
 
 .episodeEditorList { display: grid; gap: 10px; margin: 18px 0 0; padding: 0; list-style: none; }
 .episodeEditorList summary { display: grid; min-height: 64px; cursor: pointer; grid-template-columns: 40px minmax(0,1fr) auto; align-items: center; gap: 12px; padding: 0 16px; }

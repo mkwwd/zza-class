@@ -314,6 +314,32 @@
   transform: rotate(90deg) scale(1.46);
 }
 
+.horizontalTape {
+  min-height: 0;
+  aspect-ratio: 3 / 2;
+}
+
+.horizontalTape .vhsImage {
+  filter: drop-shadow(0 8px 12px rgba(0, 0, 0, 0.5));
+  transform: none;
+}
+
+.horizontalTape .vhsLabel {
+  left: 30%;
+  right: 30%;
+  gap: 2px;
+  padding: 2px;
+}
+
+.horizontalTape .vhsLabel strong {
+  font-size: clamp(0.58rem, 14cqw, 0.82rem);
+}
+
+.horizontalTape .vhsLabel small {
+  font-size: clamp(0.34rem, 6cqw, 0.48rem);
+  letter-spacing: 0;
+}
+
 .vhsLabel {
   position: absolute;
   z-index: 2;
@@ -346,6 +372,10 @@
 @container (max-width: 110px) {
   .vhsLabel {
     display: none;
+  }
+
+  .horizontalTape .vhsLabel {
+    display: grid;
   }
 }
 

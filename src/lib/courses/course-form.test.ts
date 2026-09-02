@@ -78,8 +78,6 @@ describe('lesson form parsing', () => {
         content: 'React is a UI library.',
         videoUrl: 'https://example.com/video',
         sortOrder: 2,
-        thumbnailUrl: 'https://media.example.com/thumbnails/lesson-123.png',
-        thumbnailImageId: 'lesson-image-id',
       },
     });
   });
@@ -106,8 +104,6 @@ describe('lesson form parsing', () => {
         content: '',
         videoUrl: '',
         sortOrder: 0,
-        thumbnailUrl: '',
-        thumbnailImageId: '',
       },
     });
   });
