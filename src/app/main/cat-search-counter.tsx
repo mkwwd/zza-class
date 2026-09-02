@@ -38,9 +38,9 @@ export function CatSearchCounter({ initialQuery }: CatSearchCounterProps) {
       />
       <div className={styles.sceneShade} />
 
-      <div className={styles.heroCopy}>
-        <h1>VIDEO ROOM</h1>
-        <strong>SHORT VIDEO RENTAL SHOP</strong>
+      <div aria-label="비디오룸 영업 중" className={styles.openSign} role="img">
+        <strong>OPEN</strong>
+        <span>VIDEO RENTAL</span>
       </div>
 
       <div
