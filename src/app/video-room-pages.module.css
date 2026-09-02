@@ -264,7 +264,8 @@
 
 .episodeGrid li { min-width: 0; }
 .episodeGrid a,
-.episodeGrid li > div {
+.episodeGrid li > div,
+.playerEpisodes a {
   display: grid;
   height: 100%;
   min-width: 0;
@@ -280,7 +281,9 @@
 }
 
 .episodeGrid a:hover,
-.episodeGrid a:focus-visible { border-color: rgba(240, 91, 135, 0.55); background: rgba(14, 24, 39, 0.9); outline: none; }
+.episodeGrid a:focus-visible,
+.playerEpisodes a:hover,
+.playerEpisodes a:focus-visible { border-color: rgba(240, 91, 135, 0.55); background: rgba(14, 24, 39, 0.9); outline: none; }
 
 .episodeVisual { display: grid; min-width: 0; align-self: center; place-items: center; }
 .episodeVisual > span { width: 100%; min-height: 0; }
@@ -355,11 +358,9 @@
 .playerNotes { display: grid; grid-template-columns: minmax(0, 1fr) minmax(300px, 0.7fr); gap: 36px; margin-top: 42px; border-top: 1px solid rgba(145,169,194,0.18); padding-top: 26px; }
 .playerNotes h2 { margin: 0; font-size: 1.25rem; }
 .playerNotes p { max-width: 68ch; margin: 13px 0 0; color: #aeb7c2; font-size: 0.87rem; line-height: 1.8; white-space: pre-wrap; }
-.playerNotes ol { display: grid; gap: 7px; margin: 0; padding: 0; list-style: none; }
-.playerNotes a { display: grid; grid-template-columns: 34px minmax(0,1fr); gap: 10px; border-radius: 7px; color: #b8c0ca; padding: 9px 11px; text-decoration: none; }
-.playerNotes a[aria-current='page'] { background: rgba(111,88,189,0.24); color: #f5eef7; }
-.playerNotes a span { color: #ef7da0; font-size: 0.72rem; font-weight: 850; }
-.playerNotes a strong { overflow: hidden; font-size: 0.76rem; text-overflow: ellipsis; white-space: nowrap; }
+.playerEpisodes { display: grid; gap: 10px; margin: 0; padding: 0; list-style: none; }
+.playerEpisodes li { min-width: 0; }
+.playerEpisodes a[aria-current='page'] { border-color: rgba(143, 119, 239, 0.55); background: rgba(111, 88, 189, 0.24); }
 
 .myPageHeader { min-height: 118px; }
 .myPageHeader h1 { margin: 0; color: #f4ede6; font-size: 2.4rem; font-weight: 900; letter-spacing: -0.03em; }
@@ -456,7 +457,8 @@
   .rentedGrid,
   .completedGrid { grid-template-columns: 1fr; }
   .episodeGrid a,
-  .episodeGrid li > div { grid-template-columns: 104px minmax(0,1fr); }
+  .episodeGrid li > div,
+  .playerEpisodes a { grid-template-columns: 104px minmax(0,1fr); }
   .playerPage { padding-inline: 10px; }
   .playerHeading { padding-inline: 8px; }
   .playerHeading > strong { display: none; }
@@ -480,5 +482,6 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .episodeGrid a { transition: none; }
+  .episodeGrid a,
+  .playerEpisodes a { transition: none; }
 }

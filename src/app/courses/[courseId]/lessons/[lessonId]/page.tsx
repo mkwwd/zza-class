@@ -3,6 +3,7 @@ import {
   Check,
   ChevronLeft,
   ChevronRight,
+  Clock3,
   ListVideo,
 } from 'lucide-react';
 import Link from 'next/link';
@@ -175,17 +176,33 @@ export default async function LessonPage({ params }: LessonPageProps) {
               {lessonContent?.content || '아직 회차 설명이 준비되지 않았어요.'}
             </p>
           </div>
-          <ol>
-            {(lessons ?? []).map((item) => (
-              <li key={item.id}>
-                <Link
-                  aria-current={item.id === lesson.id ? 'page' : undefined}
-                  href={`/courses/${courseId}/lessons/${item.id}`}>
-                  <span>{String(item.sort_order).padStart(2, '0')}</span>
-                  <strong>{item.title}</strong>
-                </Link>
-              </li>
-            ))}
+          <ol className={styles.playerEpisodes}>
+            {(lessons ?? []).map((item) => {
+              const episodeCode = `EPISODE ${String(item.sort_order).padStart(2, '0')}`;
+
+              return (
+                <li key={item.id}>
+                  <Link
+                    aria-current={item.id === lesson.id ? 'page' : undefined}
+                    href={`/courses/${courseId}/lessons/${item.id}`}>
+                    <div className={styles.episodeVisual}>
+                      <VhsTape
+                        code={episodeCode}
+                        label={`${item.sort_order}회`}
+                        orientation="horizontal"
+                      />
+                    </div>
+                    <div className={styles.episodeCopy}>
+                      <span>{episodeCode}</span>
+                      <h3>{item.title}</h3>
+                      <small>
+                        <Clock3 aria-hidden="true" size={14} /> SHORT VIDEO
+                      </small>
+                    </div>
+                  </Link>
+                </li>
+              );
+            })}
           </ol>
         </section>
       </main>
