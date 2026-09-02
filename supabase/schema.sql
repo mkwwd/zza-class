@@ -24,6 +24,7 @@ create table if not exists public.courses (
   id uuid primary key default gen_random_uuid(),
   title text not null,
   description text,
+  staff_note text,
   status public.course_status not null default 'draft',
   thumbnail_url text,
   thumbnail_image_id text,
@@ -69,7 +70,8 @@ create table if not exists public.lesson_progress (
 
 alter table public.courses
   add column if not exists thumbnail_url text,
-  add column if not exists thumbnail_image_id text;
+  add column if not exists thumbnail_image_id text,
+  add column if not exists staff_note text;
 
 alter table public.lessons
   add column if not exists thumbnail_url text,

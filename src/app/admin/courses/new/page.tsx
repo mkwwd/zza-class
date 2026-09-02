@@ -88,6 +88,16 @@ export default async function NewCoursePage({
               </label>
               <label>
                 <span>
+                  Staff 리코의 한마디 <small>선택</small>
+                </span>
+                <textarea
+                  maxLength={180}
+                  name="staffNote"
+                  placeholder="이 작품을 고른 손님에게 건넬 짧은 멘트를 입력하세요."
+                />
+              </label>
+              <label>
+                <span>
                   첫 회차 설명 <small>선택</small>
                 </span>
                 <textarea

@@ -45,7 +45,7 @@ export default async function CourseDetailPage({
   const profile = user ? await getUserProfile(supabase, user.id) : null;
   const { data: course } = await supabase
     .from('courses')
-    .select('id, title, description, status, thumbnail_url')
+    .select('*')
     .eq('id', courseId)
     .maybeSingle();
 
@@ -173,7 +173,10 @@ export default async function CourseDetailPage({
               <StaffCat className={styles.detailCat} priority />
               <div>
                 <strong>Staff 리코의 한마디</strong>
-                <p>조명을 조금 낮추고 편안한 자리에서 감상해 보세요.</p>
+                <p>
+                  {course.staff_note ||
+                    '조명을 조금 낮추고 편안한 자리에서 감상해 보세요.'}
+                </p>
               </div>
             </aside>
           </div>

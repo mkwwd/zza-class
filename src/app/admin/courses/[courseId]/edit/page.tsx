@@ -31,7 +31,7 @@ export default async function EditCoursePage({
   const { supabase } = await requireAdmin();
   const { data: course } = await supabase
     .from('courses')
-    .select('id, title, description, status, thumbnail_url, thumbnail_image_id')
+    .select('*')
     .eq('id', courseId)
     .maybeSingle();
 
@@ -99,6 +99,15 @@ export default async function EditCoursePage({
                 <textarea
                   defaultValue={course.description ?? ''}
                   name="description"
+                />
+              </label>
+              <label>
+                <span>Staff 리코의 한마디</span>
+                <textarea
+                  defaultValue={course.staff_note ?? ''}
+                  maxLength={180}
+                  name="staffNote"
+                  placeholder="작품을 추천하는 짧은 멘트를 입력하세요."
                 />
               </label>
               <label>

@@ -24,6 +24,7 @@ export async function createCourse(formData: FormData) {
     .insert({
       created_by: user.id,
       description: parsed.value.description,
+      staff_note: parsed.value.staffNote || null,
       status: parsed.value.status,
       thumbnail_image_id: parsed.value.thumbnailImageId || null,
       thumbnail_url: parsed.value.thumbnailUrl || null,
@@ -69,6 +70,7 @@ export async function updateCourse(courseId: string, formData: FormData) {
     .from('courses')
     .update({
       description: parsed.value.description,
+      staff_note: parsed.value.staffNote || null,
       status: parsed.value.status,
       thumbnail_image_id: parsed.value.thumbnailImageId || null,
       thumbnail_url: parsed.value.thumbnailUrl || null,

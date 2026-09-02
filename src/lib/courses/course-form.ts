@@ -27,6 +27,7 @@ export function parseCourseForm(
     value: {
       title,
       description: readString(formData, 'description'),
+      staffNote: readString(formData, 'staffNote'),
       status: readStatus(formData),
       thumbnailUrl: readString(formData, 'thumbnailUrl'),
       thumbnailImageId: readString(formData, 'thumbnailImageId'),

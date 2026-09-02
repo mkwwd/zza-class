@@ -11,6 +11,7 @@ describe('course form parsing', () => {
     const formData = new FormData();
     formData.set('title', 'React Basics');
     formData.set('description', 'Start learning React.');
+    formData.set('staffNote', '불을 낮추고 천천히 감상해 보세요.');
     formData.set('status', 'published');
     formData.set(
       'thumbnailUrl',
@@ -23,6 +24,7 @@ describe('course form parsing', () => {
       value: {
         title: 'React Basics',
         description: 'Start learning React.',
+        staffNote: '불을 낮추고 천천히 감상해 보세요.',
         status: 'published',
         thumbnailUrl: 'https://media.example.com/thumbnails/course-123.png',
         thumbnailImageId: 'course-image-id',
@@ -50,6 +52,7 @@ describe('course form parsing', () => {
       value: {
         title: 'React Basics',
         description: '',
+        staffNote: '',
         status: 'draft',
         thumbnailUrl: '',
         thumbnailImageId: '',
