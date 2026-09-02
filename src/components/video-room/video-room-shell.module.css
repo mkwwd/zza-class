@@ -182,6 +182,7 @@
 .shopSidebar .navigation .active {
   background: rgba(101, 76, 131, 0.42);
   color: #ffcfdb;
+  box-shadow: none;
   transform: translateX(2px);
 }
 

@@ -1,14 +1,6 @@
 import type { ReactNode } from 'react';
 
-import {
-  Clapperboard,
-  Film,
-  FolderOpen,
-  LibraryBig,
-  LogOut,
-  Settings,
-  UploadCloud,
-} from 'lucide-react';
+import { Clapperboard, Film, LibraryBig, LogOut } from 'lucide-react';
 import Link from 'next/link';
 
 import { logout } from '@/app/actions';
@@ -40,18 +32,6 @@ const shopNavigation = [
   { href: '/my-page', icon: LibraryBig, key: 'my-page', label: '마이 페이지' },
 ] as const;
 
-const staffNavigation = [
-  { href: '/admin', icon: LibraryBig, key: 'inventory', label: '비디오 관리' },
-  {
-    href: '/admin/courses/new',
-    icon: UploadCloud,
-    key: 'upload',
-    label: '새 비디오 등록',
-  },
-  { href: '/main', icon: FolderOpen, key: 'home', label: '스토어 보기' },
-  { href: '/admin', icon: Settings, key: 'settings', label: '설정' },
-] as const;
-
 export function VideoRoomShell({
   activeItem,
   bagCount = 0,
@@ -60,24 +40,24 @@ export function VideoRoomShell({
   mode = 'shop',
   showStaffCat = true,
 }: VideoRoomShellProps) {
-  const navigation = mode === 'staff' ? staffNavigation : shopNavigation;
-  const isShopMode = mode === 'shop';
+  const isStaffMode = mode === 'staff';
+  const showCatPanel = showStaffCat && !isStaffMode;
+  const showEditingRoomLink = isAdmin || isStaffMode;
 
   return (
-    <div className={`${styles.shell} ${isShopMode ? styles.shopShell : ''}`}>
-      <aside
-        className={`${styles.sidebar} ${isShopMode ? styles.shopSidebar : ''}`}>
+    <div className={`${styles.shell} ${styles.shopShell}`}>
+      <aside className={`${styles.sidebar} ${styles.shopSidebar}`}>
         <Link className={styles.brand} href="/main">
           <span>VIDEO ROOM</span>
           <small>SHORT VIDEO RENTAL SHOP</small>
         </Link>
 
-        {mode === 'staff' ? (
+        {isStaffMode ? (
           <span className={styles.staffLabel}>STAFF ONLY</span>
         ) : null}
 
         <nav className={styles.navigation} aria-label="VIDEO ROOM 메뉴">
-          {navigation.map(({ href, icon: Icon, key, label }) => (
+          {shopNavigation.map(({ href, icon: Icon, key, label }) => (
             <Link
               aria-current={activeItem === key ? 'page' : undefined}
               className={activeItem === key ? styles.active : undefined}
@@ -87,28 +67,25 @@ export function VideoRoomShell({
               <span>{label}</span>
             </Link>
           ))}
-          {isShopMode && isAdmin ? (
-            <Link href="/admin">
+          {showEditingRoomLink ? (
+            <Link
+              aria-current={isStaffMode ? 'page' : undefined}
+              className={isStaffMode ? styles.active : undefined}
+              href="/admin">
               <Clapperboard aria-hidden="true" size={21} strokeWidth={1.65} />
               <span>편집실</span>
             </Link>
           ) : null}
         </nav>
 
-        {showStaffCat ? (
+        {showCatPanel ? (
           <div className={styles.catPanel}>
             <div className={styles.catBubble}>
-              {mode === 'staff'
-                ? '오늘도 멋진 작품을 정리해 볼까요?'
-                : '보고 싶은 이야기를 천천히 골라보세요.'}
+              보고 싶은 이야기를 천천히 골라보세요.
             </div>
             <StaffCat className={styles.cat} priority={false} />
-            <strong>{mode === 'staff' ? 'STAFF CAT' : 'VIDEO CLUB'}</strong>
-            <span>
-              {mode === 'staff'
-                ? '업무 도우미 · ONLINE'
-                : `MY BAG · ${bagCount}`}
-            </span>
+            <strong>VIDEO CLUB</strong>
+            <span>{`MY BAG · ${bagCount}`}</span>
           </div>
         ) : null}
 
