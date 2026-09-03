@@ -128,7 +128,7 @@ export default async function EditCoursePage({
           <div className={styles.editorSectionHeading}>
             <div>
               <h2>회차 편집실</h2>
-              <p>2화, 3화와 이후 회차를 계속 추가할 수 있어요.</p>
+              <p>작품에 담길 이야기를 1화부터 순서대로 추가할 수 있어요.</p>
             </div>
             <span>{lessons?.length ?? 0} EPISODES</span>
           </div>

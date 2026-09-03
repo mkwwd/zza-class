@@ -1,10 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import {
-  parseCourseForm,
-  parseInitialEpisodeForm,
-  parseLessonForm,
-} from './course-form';
+import { parseCourseForm, parseLessonForm } from './course-form';
 
 describe('course form parsing', () => {
   it('accepts valid course data', () => {
@@ -107,46 +103,6 @@ describe('lesson form parsing', () => {
         content: '',
         videoUrl: '',
         sortOrder: 0,
-      },
-    });
-  });
-});
-
-describe('initial episode form parsing', () => {
-  it('returns null when no first episode fields were supplied', () => {
-    expect(parseInitialEpisodeForm(new FormData())).toEqual({
-      ok: true,
-      value: null,
-    });
-  });
-
-  it('creates a first episode and defaults its title when only video exists', () => {
-    const formData = new FormData();
-    formData.set('videoUrl', 'https://media.example.com/videos/forest-01.mp4');
-    formData.set('episodeContent', '숲에서 시작되는 첫 번째 이야기');
-
-    expect(parseInitialEpisodeForm(formData)).toEqual({
-      ok: true,
-      value: {
-        title: '1화',
-        content: '숲에서 시작되는 첫 번째 이야기',
-        videoUrl: 'https://media.example.com/videos/forest-01.mp4',
-        sortOrder: 1,
-      },
-    });
-  });
-
-  it('creates episode metadata when a title is supplied before its video', () => {
-    const formData = new FormData();
-    formData.set('episodeTitle', '낯선 불빛');
-
-    expect(parseInitialEpisodeForm(formData)).toEqual({
-      ok: true,
-      value: {
-        title: '낯선 불빛',
-        content: '',
-        videoUrl: '',
-        sortOrder: 1,
       },
     });
   });

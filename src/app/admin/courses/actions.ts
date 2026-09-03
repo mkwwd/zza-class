@@ -4,18 +4,13 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 
 import { requireAdmin } from '@/lib/auth/server';
-import {
-  parseCourseForm,
-  parseInitialEpisodeForm,
-  parseLessonForm,
-} from '@/lib/courses/course-form';
+import { parseCourseForm, parseLessonForm } from '@/lib/courses/course-form';
 
 export async function createCourse(formData: FormData) {
   const { supabase, user } = await requireAdmin();
   const parsed = parseCourseForm(formData);
-  const parsedEpisode = parseInitialEpisodeForm(formData);
 
-  if (!parsed.ok || !parsedEpisode.ok) {
+  if (!parsed.ok) {
     redirect('/admin/courses/new?error=invalid-course');
   }
 
@@ -32,26 +27,6 @@ export async function createCourse(formData: FormData) {
     })
     .select('id')
     .single();
-
-  if (data && parsedEpisode.value) {
-    const { data: lesson } = await supabase
-      .from('lessons')
-      .insert({
-        course_id: data.id,
-        sort_order: parsedEpisode.value.sortOrder,
-        title: parsedEpisode.value.title,
-      })
-      .select('id')
-      .single();
-
-    if (lesson) {
-      await supabase.from('lesson_contents').insert({
-        content: parsedEpisode.value.content,
-        lesson_id: lesson.id,
-        video_url: parsedEpisode.value.videoUrl,
-      });
-    }
-  }
 
   revalidatePath('/admin');
   revalidatePath('/main');

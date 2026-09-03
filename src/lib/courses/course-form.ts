@@ -1,9 +1,4 @@
-import type {
-  CourseFormInput,
-  CourseStatus,
-  InitialEpisodeFormInput,
-  LessonFormInput,
-} from './types';
+import type { CourseFormInput, CourseStatus, LessonFormInput } from './types';
 
 function readString(formData: FormData, key: string) {
   return String(formData.get(key) ?? '').trim();
@@ -53,30 +48,6 @@ export function parseLessonForm(
       content: readString(formData, 'content'),
       videoUrl: readString(formData, 'videoUrl'),
       sortOrder: Number.isFinite(sortOrder) ? sortOrder : 0,
-    },
-  };
-}
-
-export function parseInitialEpisodeForm(
-  formData: FormData,
-):
-  | { ok: true; value: InitialEpisodeFormInput | null }
-  | { ok: false; error: string } {
-  const suppliedTitle = readString(formData, 'episodeTitle');
-  const videoUrl = readString(formData, 'videoUrl');
-  const content = readString(formData, 'episodeContent');
-
-  if (!suppliedTitle && !videoUrl && !content) {
-    return { ok: true, value: null };
-  }
-
-  return {
-    ok: true,
-    value: {
-      title: suppliedTitle || '1화',
-      content,
-      videoUrl,
-      sortOrder: 1,
     },
   };
 }

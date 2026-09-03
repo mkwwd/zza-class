@@ -6,7 +6,7 @@ import { requireAdmin } from '@/lib/auth/server';
 
 import styles from '../../admin-video-room.module.css';
 import { createCourse } from '../actions';
-import { ThumbnailUploader, VideoUploader } from '../thumbnail-uploader';
+import { ThumbnailUploader } from '../thumbnail-uploader';
 
 type NewCoursePageProps = {
   searchParams: Promise<{ error?: string }>;
@@ -30,11 +30,8 @@ export default async function NewCoursePage({
           <span>
             <UploadCloud aria-hidden="true" size={22} /> 새 비디오 등록
           </span>
-          <h1>작품과 첫 회차를 준비해 주세요.</h1>
-          <p>
-            첫 회차는 지금 함께 올리거나, 작품을 만든 뒤 편집실에서 추가할 수
-            있어요.
-          </p>
+          <h1>작품 정보를 먼저 준비해 주세요.</h1>
+          <p>비디오의 기본 틀을 만든 뒤 편집실에서 회차를 추가할 수 있어요.</p>
         </div>
       </header>
 
@@ -50,10 +47,6 @@ export default async function NewCoursePage({
                 description="메인 선반과 상세 페이지에 보이는 작품 표지입니다."
                 label="비디오 표지"
               />
-              <VideoUploader
-                description="선택 사항입니다. 비워두면 편집실에서 1화를 등록할 수 있어요."
-                label="첫 회차 영상"
-              />
             </section>
 
             <section className={styles.fieldsColumn}>
@@ -66,15 +59,6 @@ export default async function NewCoursePage({
                   name="title"
                   placeholder="비디오 제목을 입력하세요."
                   required
-                />
-              </label>
-              <label>
-                <span>
-                  첫 회차 제목 <small>선택</small>
-                </span>
-                <input
-                  name="episodeTitle"
-                  placeholder="비워두면 1화로 저장됩니다."
                 />
               </label>
               <label>
@@ -96,15 +80,6 @@ export default async function NewCoursePage({
                 />
               </label>
               <label>
-                <span>
-                  첫 회차 설명 <small>선택</small>
-                </span>
-                <textarea
-                  name="episodeContent"
-                  placeholder="첫 회차에 대한 짧은 설명을 입력하세요."
-                />
-              </label>
-              <label>
                 <span>공개 상태</span>
                 <select defaultValue="draft" name="status">
                   <option value="draft">비공개 · 편집 중</option>
@@ -118,8 +93,8 @@ export default async function NewCoursePage({
             <div className={styles.formNotice}>
               <Info aria-hidden="true" size={19} />
               <p>
-                <strong>등록 후 편집실로 이동합니다.</strong> 나머지 회차는
-                그곳에서 순서대로 계속 추가할 수 있어요.
+                <strong>등록 후 회차를 추가할 수 있어요.</strong> 작품을
+                저장하면 편집실로 이동해 1화부터 순서대로 등록합니다.
               </p>
             </div>
             <Link href="/admin">취소</Link>

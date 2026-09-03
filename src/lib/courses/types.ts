@@ -15,8 +15,3 @@ export type LessonFormInput = {
   videoUrl: string;
   sortOrder: number;
 };
-
-export type InitialEpisodeFormInput = Pick<
-  LessonFormInput,
-  'title' | 'content' | 'videoUrl' | 'sortOrder'
->;
