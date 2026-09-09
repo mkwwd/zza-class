@@ -34,8 +34,9 @@ create table public.course_genres (
   unique (course_id, position)
 );
 
-alter table public.lesson_contents
-  add column if not exists duration_seconds integer;
+alter table public.lessons
+  add column if not exists duration_seconds integer,
+  add column if not exists has_video boolean not null default false;
 ```
 
 The migration seeds `drama`, `romance`, `thriller`, `fantasy`, and `animation`. Public and authenticated users may read both genre tables; only administrators may create, update, or delete course links. Database constraints enforce:
@@ -43,6 +44,8 @@ The migration seeds `drama`, `romance`, `thriller`, `fantasy`, and `animation`. 
 - A course has at most two genre links through unique positions `1` and `2`.
 - Every course genre references a seeded catalog row.
 - `duration_seconds` is null or a non-negative integer.
+
+Duration and video availability belong to `lessons`, whose metadata is readable for published courses. The protected `lesson_contents.video_url` remains available only to enrolled users and administrators. The migration backfills `lessons.has_video` from existing non-empty lesson content URLs without exposing those URLs.
 
 The application submits stable lowercase slugs. Administration UI reads Korean labels from the catalog, while public cards use the catalog's uppercase English labels.
 
@@ -73,8 +76,8 @@ If metadata cannot be read, the upload and lesson form remain usable. The hidden
 - `parseCourseForm` parses repeated `genres` form values, de-duplicates them, validates the seeded slug allowlist, and enforces the two-genre maximum.
 - `createCourse` and `updateCourse` replace the course's `course_genres` rows with positions matching the submitted order.
 - `parseLessonForm` accepts an optional `durationSeconds` value and validates it as a non-negative integer.
-- `addLesson` and `updateLesson` persist duration to `lesson_contents.duration_seconds`.
-- Main-page queries select genre links with catalog labels and lesson durations. Durations are grouped by course and summed only when every playable episode has a known duration.
+- `addLesson` and `updateLesson` persist duration and video availability to `lessons`, while the protected URL remains in `lesson_contents`.
+- Main-page queries select genre links with catalog labels plus public lesson duration and availability metadata. Durations are grouped by course and summed only when every playable episode has a known duration.
 - Course-detail queries select lesson content durations and use the same aggregation utility.
 
 ## Display Rules
@@ -100,7 +103,7 @@ The old index-based genre rotation and six-minutes-per-episode estimate are remo
 - Invalid or excessive genre values return the existing invalid-course redirect state.
 - Invalid duration values return the existing invalid-lesson redirect state.
 - Browser metadata failures do not block upload; the UI explains that time will remain unregistered.
-- Existing courses remain valid with no genre links, and existing lesson content remains valid because duration is nullable.
+- Existing courses remain valid with no genre links. Existing lessons retain nullable duration, and their video availability is backfilled from protected lesson content during migration.
 
 ## Testing
 
