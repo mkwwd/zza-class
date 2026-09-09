@@ -16,11 +16,12 @@ describe('getTapeDisplay', () => {
         index: 2,
         isEnrolled: true,
         lessonCount: 7,
+        runtimeSeconds: 188,
       }),
     ).toEqual({
       code: 'TAPE 003',
       episodeLabel: '7화',
-      runtimeLabel: '약 42분',
+      runtimeLabel: '3분 8초',
       shelfLabel: '보관 중',
       tone: 'rose',
     });
@@ -32,7 +33,18 @@ describe('getTapeDisplay', () => {
         index: 5,
         isEnrolled: false,
         lessonCount: 0,
+        runtimeSeconds: null,
       }).episodeLabel,
     ).toBe('준비 중');
+  });
+
+  it('does not estimate runtime when a course duration is missing', () => {
+    expect(
+      getTapeDisplay({
+        index: 0,
+        lessonCount: 4,
+        runtimeSeconds: null,
+      }).runtimeLabel,
+    ).toBe('시간 미등록');
   });
 });

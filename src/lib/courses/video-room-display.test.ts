@@ -17,6 +17,8 @@ describe('buildVideoRoomCards', () => {
           lessonCount: 2,
           hasPlayableVideo: false,
           isEnrolled: false,
+          genreLabels: ['DRAMA'],
+          runtimeSeconds: 188,
         },
       ],
       1,
@@ -29,7 +31,52 @@ describe('buildVideoRoomCards', () => {
       isPlayable: false,
       href: undefined,
       visualKind: 'coming-soon-tape',
+      runtimeLabel: '편성 대기',
     });
+  });
+
+  it('preserves stored genre order and displays exact playable runtime', () => {
+    const [card] = buildVideoRoomCards(
+      [
+        {
+          id: 'course-1',
+          title: '달의 뒷면',
+          description: null,
+          thumbnailUrl: null,
+          lessonCount: 2,
+          hasPlayableVideo: true,
+          isEnrolled: false,
+          genreLabels: ['THRILLER', 'FANTASY'],
+          runtimeSeconds: 188,
+        },
+      ],
+      1,
+    );
+
+    expect(card.genreLabel).toBe('THRILLER · FANTASY');
+    expect(card.runtimeLabel).toBe('3분 8초');
+  });
+
+  it('uses metadata fallbacks for playable courses with incomplete data', () => {
+    const [card] = buildVideoRoomCards(
+      [
+        {
+          id: 'course-1',
+          title: '장르 없는 작품',
+          description: null,
+          thumbnailUrl: null,
+          lessonCount: 1,
+          hasPlayableVideo: true,
+          isEnrolled: false,
+          genreLabels: [],
+          runtimeSeconds: null,
+        },
+      ],
+      1,
+    );
+
+    expect(card.genreLabel).toBe('장르 미등록');
+    expect(card.runtimeLabel).toBe('시간 미등록');
   });
 
   it('fills empty shelf slots with coming soon VHS tapes', () => {
@@ -69,6 +116,8 @@ describe('pickFeaturedVideoRoomCard', () => {
           lessonCount: 0,
           hasPlayableVideo: false,
           isEnrolled: false,
+          genreLabels: [],
+          runtimeSeconds: null,
         },
         {
           id: 'course-2',
@@ -78,6 +127,8 @@ describe('pickFeaturedVideoRoomCard', () => {
           lessonCount: 4,
           hasPlayableVideo: true,
           isEnrolled: true,
+          genreLabels: ['DRAMA', 'ROMANCE'],
+          runtimeSeconds: 245,
         },
       ],
       2,

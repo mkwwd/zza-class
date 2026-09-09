@@ -11,6 +11,7 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 
 import { isAdmin as checkIsAdmin } from '@/lib/auth/access';
+import { sumPlayableRuntimeSeconds } from '@/lib/courses/course-runtime';
 import {
   buildVideoRoomCards,
   pickFeaturedVideoRoomCard,
@@ -37,13 +38,14 @@ type CourseRow = {
 };
 
 type LessonRow = {
-  id: string;
   course_id: string;
+  duration_seconds: number | null;
+  has_video: boolean;
 };
 
-type LessonContentRow = {
-  lesson_id: string;
-  video_url: string | null;
+type CourseGenreRow = {
+  course_id: string;
+  genres: { label_en: string } | { label_en: string }[] | null;
 };
 
 type NavigationItem = {
@@ -211,46 +213,62 @@ export default async function MainPage({ searchParams }: MainPageProps) {
     .select('course_id, created_at')
     .eq('user_id', user.id)
     .order('created_at', { ascending: false });
-  const { data: courses } = await supabase
+  const { data: courses, error: coursesError } = await supabase
     .from('courses')
     .select('id, title, description, thumbnail_url')
     .eq('status', 'published')
     .order('created_at', { ascending: false });
 
+  if (coursesError) {
+    throw new Error('Failed to load published videos.');
+  }
+
   const courseIds = (courses ?? []).map((course) => course.id);
-  const { data: lessons } = courseIds.length
-    ? await supabase
-        .from('lessons')
-        .select('id, course_id')
-        .in('course_id', courseIds)
-    : { data: [] };
-  const lessonIds = (lessons ?? []).map((lesson) => lesson.id);
-  const { data: lessonContents } = lessonIds.length
-    ? await supabase
-        .from('lesson_contents')
-        .select('lesson_id, video_url')
-        .in('lesson_id', lessonIds)
-    : { data: [] };
+  const [lessonResult, genreResult] = courseIds.length
+    ? await Promise.all([
+        supabase
+          .from('lessons')
+          .select('course_id, duration_seconds, has_video')
+          .in('course_id', courseIds),
+        supabase
+          .from('course_genres')
+          .select('course_id, position, genres(label_en)')
+          .in('course_id', courseIds)
+          .order('position', { ascending: true }),
+      ])
+    : [
+        { data: [], error: null },
+        { data: [], error: null },
+      ];
+
+  if (lessonResult.error || genreResult.error) {
+    throw new Error('Failed to load public video metadata.');
+  }
+
+  const lessons = (lessonResult.data ?? []) as LessonRow[];
+  const courseGenres = (genreResult.data ?? []) as CourseGenreRow[];
 
   const enrolledCourseIds = new Set(
     (enrollments ?? []).map((item) => item.course_id),
   );
-  const lessonCounts = new Map<string, number>();
-  for (const lesson of (lessons ?? []) as LessonRow[]) {
-    lessonCounts.set(
-      lesson.course_id,
-      (lessonCounts.get(lesson.course_id) ?? 0) + 1,
-    );
+  const lessonsByCourseId = new Map<string, LessonRow[]>();
+  for (const lesson of lessons) {
+    const courseLessons = lessonsByCourseId.get(lesson.course_id) ?? [];
+    courseLessons.push(lesson);
+    lessonsByCourseId.set(lesson.course_id, courseLessons);
   }
 
-  const videoLessonIds = new Set(
-    ((lessonContents ?? []) as LessonContentRow[])
-      .filter((content) => Boolean(content.video_url))
-      .map((content) => content.lesson_id),
-  );
-  const coursesWithVideo = new Set<string>();
-  for (const lesson of (lessons ?? []) as LessonRow[]) {
-    if (videoLessonIds.has(lesson.id)) coursesWithVideo.add(lesson.course_id);
+  const genreLabelsByCourseId = new Map<string, string[]>();
+  for (const courseGenre of courseGenres) {
+    const genre = Array.isArray(courseGenre.genres)
+      ? courseGenre.genres[0]
+      : courseGenre.genres;
+
+    if (!genre) continue;
+
+    const labels = genreLabelsByCourseId.get(courseGenre.course_id) ?? [];
+    labels.push(genre.label_en);
+    genreLabelsByCourseId.set(courseGenre.course_id, labels);
   }
 
   const keyword = searchQuery.toLowerCase();
@@ -261,15 +279,24 @@ export default async function MainPage({ searchParams }: MainPageProps) {
       (course.description ?? '').toLowerCase().includes(keyword),
   );
   const cards = buildVideoRoomCards(
-    visibleCourses.map((course) => ({
-      id: course.id,
-      title: course.title,
-      description: course.description,
-      thumbnailUrl: course.thumbnail_url,
-      lessonCount: lessonCounts.get(course.id) ?? 0,
-      hasPlayableVideo: coursesWithVideo.has(course.id),
-      isEnrolled: enrolledCourseIds.has(course.id),
-    })),
+    visibleCourses.map((course) => {
+      const courseLessons = lessonsByCourseId.get(course.id) ?? [];
+      const playableDurations = courseLessons
+        .filter((lesson) => lesson.has_video)
+        .map((lesson) => lesson.duration_seconds);
+
+      return {
+        id: course.id,
+        title: course.title,
+        description: course.description,
+        thumbnailUrl: course.thumbnail_url,
+        lessonCount: courseLessons.length,
+        hasPlayableVideo: courseLessons.some((lesson) => lesson.has_video),
+        isEnrolled: enrolledCourseIds.has(course.id),
+        genreLabels: genreLabelsByCourseId.get(course.id) ?? [],
+        runtimeSeconds: sumPlayableRuntimeSeconds(playableDurations),
+      };
+    }),
   );
   const featuredCard = pickFeaturedVideoRoomCard(cards);
   const isAdmin = checkIsAdmin(profile?.role === 'admin' ? 'admin' : 'user');

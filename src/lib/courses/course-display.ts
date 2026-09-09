@@ -1,3 +1,4 @@
+import { formatRuntimeLabel } from './course-runtime';
 import type { CourseStatus } from './types';
 
 export function formatCourseStatus(status: CourseStatus) {
@@ -20,12 +21,14 @@ type TapeDisplayInput = {
   index: number;
   isEnrolled?: boolean;
   lessonCount: number;
+  runtimeSeconds: number | null;
 };
 
 export function getTapeDisplay({
   index,
   isEnrolled = false,
   lessonCount,
+  runtimeSeconds,
 }: TapeDisplayInput): TapeDisplay {
   const normalizedLessonCount = Math.max(0, lessonCount);
 
@@ -34,9 +37,7 @@ export function getTapeDisplay({
     episodeLabel: normalizedLessonCount
       ? `${normalizedLessonCount}화`
       : '준비 중',
-    runtimeLabel: normalizedLessonCount
-      ? `약 ${normalizedLessonCount * 6}분`
-      : '편성 대기',
+    runtimeLabel: formatRuntimeLabel(runtimeSeconds),
     shelfLabel: isEnrolled ? '보관 중' : '대여 가능',
     tone: tapeTones[index % tapeTones.length],
   };

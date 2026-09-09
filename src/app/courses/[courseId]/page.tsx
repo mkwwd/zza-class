@@ -20,12 +20,26 @@ import {
 } from '@/components/video-room/VideoRoomVisuals';
 import { getUserProfile } from '@/lib/auth/server';
 import { getTapeDisplay } from '@/lib/courses/course-display';
+import { sumPlayableRuntimeSeconds } from '@/lib/courses/course-runtime';
+import { formatGenreLabels } from '@/lib/courses/genres';
 import { createClient, hasSupabaseEnv } from '@/lib/supabase/server';
 
 import { enrollInCourse } from '../actions';
 
 type CourseDetailPageProps = {
   params: Promise<{ courseId: string }>;
+};
+
+type CourseGenreRow = {
+  genres: { label_en: string } | { label_en: string }[] | null;
+};
+
+type LessonRow = {
+  id: string;
+  title: string;
+  sort_order: number;
+  duration_seconds: number | null;
+  has_video: boolean;
 };
 
 export const dynamic = 'force-dynamic';
@@ -43,19 +57,33 @@ export default async function CourseDetailPage({
     data: { user },
   } = await supabase.auth.getUser();
   const profile = user ? await getUserProfile(supabase, user.id) : null;
-  const { data: course } = await supabase
+  const { data: course, error: courseError } = await supabase
     .from('courses')
     .select('*')
     .eq('id', courseId)
     .maybeSingle();
 
+  if (courseError) {
+    throw new Error('Failed to load video details.');
+  }
+
   if (!course) notFound();
 
-  const { data: lessons } = await supabase
+  const { data: lessons, error: lessonsError } = await supabase
     .from('lessons')
-    .select('id, title, sort_order')
+    .select('id, title, sort_order, duration_seconds, has_video')
     .eq('course_id', course.id)
     .order('sort_order', { ascending: true });
+  const { data: courseGenres, error: courseGenresError } = await supabase
+    .from('course_genres')
+    .select('position, genres(label_en)')
+    .eq('course_id', course.id)
+    .order('position', { ascending: true });
+
+  if (lessonsError || courseGenresError) {
+    throw new Error('Failed to load public video metadata.');
+  }
+
   const { data: enrollment } = user
     ? await supabase
         .from('enrollments')
@@ -71,11 +99,27 @@ export default async function CourseDetailPage({
         .eq('user_id', user.id)
     : { count: 0 };
 
-  const lessonCount = lessons?.length ?? 0;
+  const courseLessons = (lessons ?? []) as LessonRow[];
+  const lessonCount = courseLessons.length;
+  const runtimeSeconds = sumPlayableRuntimeSeconds(
+    courseLessons
+      .filter((lesson) => lesson.has_video)
+      .map((lesson) => lesson.duration_seconds),
+  );
+  const genreLabel = formatGenreLabels(
+    ((courseGenres ?? []) as CourseGenreRow[]).flatMap((courseGenre) => {
+      const genre = Array.isArray(courseGenre.genres)
+        ? courseGenre.genres[0]
+        : courseGenre.genres;
+
+      return genre ? [genre.label_en] : [];
+    }),
+  );
   const tape = getTapeDisplay({
     index: 0,
     isEnrolled: Boolean(enrollment),
     lessonCount,
+    runtimeSeconds,
   });
 
   return (
@@ -117,6 +161,7 @@ export default async function CourseDetailPage({
             <h1>{course.title}</h1>
             <p className={styles.detailSubtitle}>VIDEO ROOM ORIGINAL</p>
             <div className={styles.detailMeta}>
+              <span>{genreLabel}</span>
               <span>{tape.episodeLabel}</span>
               <span>{tape.runtimeLabel}</span>
               <span>
@@ -130,10 +175,10 @@ export default async function CourseDetailPage({
             <div className={styles.detailButtons}>
               {user ? (
                 enrollment ? (
-                  lessons?.[0] ? (
+                  courseLessons[0] ? (
                     <Link
                       className={styles.primaryButton}
-                      href={`/courses/${course.id}/lessons/${lessons[0].id}`}>
+                      href={`/courses/${course.id}/lessons/${courseLessons[0].id}`}>
                       <Play aria-hidden="true" fill="currentColor" size={19} />
                       첫 회차 재생
                     </Link>
@@ -191,9 +236,9 @@ export default async function CourseDetailPage({
             <span>{lessonCount} EPISODES</span>
           </div>
 
-          {lessons?.length ? (
+          {courseLessons.length ? (
             <ol className={styles.episodeGrid}>
-              {lessons.map((lesson, index) => {
+              {courseLessons.map((lesson, index) => {
                 const content = (
                   <>
                     <div className={styles.episodeVisual}>

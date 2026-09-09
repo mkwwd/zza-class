@@ -1,4 +1,6 @@
 import { getTapeDisplay, type TapeTone } from './course-display';
+import { formatRuntimeLabel } from './course-runtime';
+import { formatGenreLabels } from './genres';
 
 export type VideoRoomSourceCourse = {
   id: string;
@@ -8,6 +10,8 @@ export type VideoRoomSourceCourse = {
   lessonCount: number;
   hasPlayableVideo: boolean;
   isEnrolled: boolean;
+  genreLabels: string[];
+  runtimeSeconds: number | null;
 };
 
 export type VideoRoomCard = {
@@ -27,8 +31,6 @@ export type VideoRoomCard = {
   visualKind: 'cover' | 'coming-soon-tape';
 };
 
-const genreLabels = ['DRAMA', 'ROMANCE', 'THRILLER', 'FANTASY', 'ANIMATION'];
-
 export function buildVideoRoomCards(
   courses: VideoRoomSourceCourse[],
   minimumSlots = 7,
@@ -38,6 +40,7 @@ export function buildVideoRoomCards(
       index,
       isEnrolled: course.isEnrolled,
       lessonCount: course.lessonCount,
+      runtimeSeconds: course.runtimeSeconds,
     });
     const isPlayable = course.hasPlayableVideo;
 
@@ -45,10 +48,12 @@ export function buildVideoRoomCards(
       id: course.id,
       title: course.title,
       description: course.description || '시놉시스가 아직 준비 중입니다.',
-      genreLabel: genreLabels[index % genreLabels.length],
+      genreLabel: formatGenreLabels(course.genreLabels),
       href: isPlayable ? `/courses/${course.id}` : undefined,
       isPlayable,
-      runtimeLabel: isPlayable ? tape.runtimeLabel : '편성 대기',
+      runtimeLabel: isPlayable
+        ? formatRuntimeLabel(course.runtimeSeconds)
+        : '편성 대기',
       shelfLabel: tape.shelfLabel,
       slotLabel: `VR-${String(index + 1).padStart(3, '0')}`,
       statusLabel: isPlayable ? '대여 가능' : '준비중',
@@ -66,6 +71,7 @@ export function buildVideoRoomCards(
     const tape = getTapeDisplay({
       index: slotIndex,
       lessonCount: 0,
+      runtimeSeconds: null,
     });
 
     return {

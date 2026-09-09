@@ -2,11 +2,18 @@ import Link from 'next/link';
 
 import { isAdmin as checkIsAdmin } from '@/lib/auth/access';
 import { getTapeDisplay } from '@/lib/courses/course-display';
+import { sumPlayableRuntimeSeconds } from '@/lib/courses/course-runtime';
 import { createClient, hasSupabaseEnv } from '@/lib/supabase/server';
 
 import { VideoShelfTheater, type ShelfTape } from './video-shelf-theater';
 
 export const dynamic = 'force-dynamic';
+
+type LessonRow = {
+  course_id: string;
+  duration_seconds: number | null;
+  has_video: boolean;
+};
 
 export default async function CoursesPage() {
   if (!hasSupabaseEnv()) {
@@ -36,12 +43,16 @@ export default async function CoursesPage() {
     .eq('status', 'published')
     .order('created_at', { ascending: false });
   const courseIds = (courses ?? []).map((course) => course.id);
-  const { data: lessons } = courseIds.length
+  const { data: lessons, error: lessonsError } = courseIds.length
     ? await supabase
         .from('lessons')
-        .select('course_id')
+        .select('course_id, duration_seconds, has_video')
         .in('course_id', courseIds)
-    : { data: [] };
+    : { data: [], error: null };
+
+  if (lessonsError) {
+    throw new Error('Failed to load public video metadata.');
+  }
   const { data: enrollments } =
     user && courseIds.length
       ? await supabase
@@ -51,12 +62,11 @@ export default async function CoursesPage() {
           .in('course_id', courseIds)
       : { data: [] };
 
-  const lessonCounts = new Map<string, number>();
-  for (const lesson of lessons ?? []) {
-    lessonCounts.set(
-      lesson.course_id,
-      (lessonCounts.get(lesson.course_id) ?? 0) + 1,
-    );
+  const lessonsByCourseId = new Map<string, LessonRow[]>();
+  for (const lesson of (lessons ?? []) as LessonRow[]) {
+    const courseLessons = lessonsByCourseId.get(lesson.course_id) ?? [];
+    courseLessons.push(lesson);
+    lessonsByCourseId.set(lesson.course_id, courseLessons);
   }
 
   const enrolledCourseIds = new Set(
@@ -64,17 +74,26 @@ export default async function CoursesPage() {
   );
   const role = profile?.role === 'admin' ? 'admin' : 'user';
   const isAdmin = checkIsAdmin(role);
-  const tapes: ShelfTape[] = (courses ?? []).map((course, index) => ({
-    id: course.id,
-    title: course.title,
-    description: course.description,
-    thumbnailUrl: course.thumbnail_url,
-    display: getTapeDisplay({
-      index,
-      isEnrolled: enrolledCourseIds.has(course.id),
-      lessonCount: lessonCounts.get(course.id) ?? 0,
-    }),
-  }));
+  const tapes: ShelfTape[] = (courses ?? []).map((course, index) => {
+    const courseLessons = lessonsByCourseId.get(course.id) ?? [];
+
+    return {
+      id: course.id,
+      title: course.title,
+      description: course.description,
+      thumbnailUrl: course.thumbnail_url,
+      display: getTapeDisplay({
+        index,
+        isEnrolled: enrolledCourseIds.has(course.id),
+        lessonCount: courseLessons.length,
+        runtimeSeconds: sumPlayableRuntimeSeconds(
+          courseLessons
+            .filter((lesson) => lesson.has_video)
+            .map((lesson) => lesson.duration_seconds),
+        ),
+      }),
+    };
+  });
 
   return (
     <main className="min-h-dvh bg-[#080607] text-[#fff7ed]">
