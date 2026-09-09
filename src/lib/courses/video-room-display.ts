@@ -38,6 +38,7 @@ export function buildVideoRoomCards(
   const courseCards = courses.map((course, index): VideoRoomCard => {
     const tape = getTapeDisplay({
       index,
+      hasPlayableVideo: course.hasPlayableVideo,
       isEnrolled: course.isEnrolled,
       lessonCount: course.lessonCount,
       runtimeSeconds: course.runtimeSeconds,
@@ -70,6 +71,7 @@ export function buildVideoRoomCards(
     const slotIndex = courseCards.length + index;
     const tape = getTapeDisplay({
       index: slotIndex,
+      hasPlayableVideo: false,
       lessonCount: 0,
       runtimeSeconds: null,
     });

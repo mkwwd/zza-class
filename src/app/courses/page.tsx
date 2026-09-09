@@ -2,17 +2,18 @@ import Link from 'next/link';
 
 import { isAdmin as checkIsAdmin } from '@/lib/auth/access';
 import { getTapeDisplay } from '@/lib/courses/course-display';
-import { sumPlayableRuntimeSeconds } from '@/lib/courses/course-runtime';
+import {
+  getPublicCoursePlayback,
+  type PublicLessonMetadata,
+} from '@/lib/courses/public-course-metadata';
 import { createClient, hasSupabaseEnv } from '@/lib/supabase/server';
 
 import { VideoShelfTheater, type ShelfTape } from './video-shelf-theater';
 
 export const dynamic = 'force-dynamic';
 
-type LessonRow = {
+type LessonRow = PublicLessonMetadata & {
   course_id: string;
-  duration_seconds: number | null;
-  has_video: boolean;
 };
 
 export default async function CoursesPage() {
@@ -46,7 +47,7 @@ export default async function CoursesPage() {
   const { data: lessons, error: lessonsError } = courseIds.length
     ? await supabase
         .from('lessons')
-        .select('course_id, duration_seconds, has_video')
+        .select('id, course_id, duration_seconds, has_video')
         .in('course_id', courseIds)
     : { data: [], error: null };
 
@@ -76,21 +77,20 @@ export default async function CoursesPage() {
   const isAdmin = checkIsAdmin(role);
   const tapes: ShelfTape[] = (courses ?? []).map((course, index) => {
     const courseLessons = lessonsByCourseId.get(course.id) ?? [];
+    const playback = getPublicCoursePlayback(courseLessons);
 
     return {
       id: course.id,
       title: course.title,
       description: course.description,
       thumbnailUrl: course.thumbnail_url,
+      hasPlayableVideo: playback.hasPlayableVideo,
       display: getTapeDisplay({
         index,
+        hasPlayableVideo: playback.hasPlayableVideo,
         isEnrolled: enrolledCourseIds.has(course.id),
         lessonCount: courseLessons.length,
-        runtimeSeconds: sumPlayableRuntimeSeconds(
-          courseLessons
-            .filter((lesson) => lesson.has_video)
-            .map((lesson) => lesson.duration_seconds),
-        ),
+        runtimeSeconds: playback.runtimeSeconds,
       }),
     };
   });

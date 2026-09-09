@@ -20,8 +20,14 @@ import {
 } from '@/components/video-room/VideoRoomVisuals';
 import { getUserProfile } from '@/lib/auth/server';
 import { getTapeDisplay } from '@/lib/courses/course-display';
-import { sumPlayableRuntimeSeconds } from '@/lib/courses/course-runtime';
 import { formatGenreLabels } from '@/lib/courses/genres';
+import {
+  getCourseGenreLabels,
+  getLessonPlaybackHref,
+  getPublicCoursePlayback,
+  type PublicCourseGenreRow,
+  type PublicLessonMetadata,
+} from '@/lib/courses/public-course-metadata';
 import { createClient, hasSupabaseEnv } from '@/lib/supabase/server';
 
 import { enrollInCourse } from '../actions';
@@ -30,16 +36,9 @@ type CourseDetailPageProps = {
   params: Promise<{ courseId: string }>;
 };
 
-type CourseGenreRow = {
-  genres: { label_en: string } | { label_en: string }[] | null;
-};
-
-type LessonRow = {
-  id: string;
+type LessonRow = PublicLessonMetadata & {
   title: string;
   sort_order: number;
-  duration_seconds: number | null;
-  has_video: boolean;
 };
 
 export const dynamic = 'force-dynamic';
@@ -101,25 +100,16 @@ export default async function CourseDetailPage({
 
   const courseLessons = (lessons ?? []) as LessonRow[];
   const lessonCount = courseLessons.length;
-  const runtimeSeconds = sumPlayableRuntimeSeconds(
-    courseLessons
-      .filter((lesson) => lesson.has_video)
-      .map((lesson) => lesson.duration_seconds),
-  );
+  const playback = getPublicCoursePlayback(courseLessons);
   const genreLabel = formatGenreLabels(
-    ((courseGenres ?? []) as CourseGenreRow[]).flatMap((courseGenre) => {
-      const genre = Array.isArray(courseGenre.genres)
-        ? courseGenre.genres[0]
-        : courseGenre.genres;
-
-      return genre ? [genre.label_en] : [];
-    }),
+    getCourseGenreLabels((courseGenres ?? []) as PublicCourseGenreRow[]),
   );
   const tape = getTapeDisplay({
     index: 0,
+    hasPlayableVideo: playback.hasPlayableVideo,
     isEnrolled: Boolean(enrollment),
     lessonCount,
-    runtimeSeconds,
+    runtimeSeconds: playback.runtimeSeconds,
   });
 
   return (
@@ -165,7 +155,9 @@ export default async function CourseDetailPage({
               <span>{tape.episodeLabel}</span>
               <span>{tape.runtimeLabel}</span>
               <span>
-                {course.status === 'published' ? '대여 가능' : '편성 대기'}
+                {playback.hasPlayableVideo && course.status === 'published'
+                  ? '대여 가능'
+                  : '편성 대기'}
               </span>
             </div>
             <p className={styles.synopsis}>
@@ -173,18 +165,16 @@ export default async function CourseDetailPage({
             </p>
 
             <div className={styles.detailButtons}>
-              {user ? (
+              {!playback.hasPlayableVideo ? (
+                <span className={styles.disabledButton}>회차 준비중</span>
+              ) : user ? (
                 enrollment ? (
-                  courseLessons[0] ? (
-                    <Link
-                      className={styles.primaryButton}
-                      href={`/courses/${course.id}/lessons/${courseLessons[0].id}`}>
-                      <Play aria-hidden="true" fill="currentColor" size={19} />
-                      첫 회차 재생
-                    </Link>
-                  ) : (
-                    <span className={styles.disabledButton}>회차 준비중</span>
-                  )
+                  <Link
+                    className={styles.primaryButton}
+                    href={`/courses/${course.id}/lessons/${playback.firstPlayableLessonId}`}>
+                    <Play aria-hidden="true" fill="currentColor" size={19} />첫
+                    회차 재생
+                  </Link>
                 ) : (
                   <form action={enrollInCourse.bind(null, course.id)}>
                     <button className={styles.primaryButton} type="submit">
@@ -239,6 +229,11 @@ export default async function CourseDetailPage({
           {courseLessons.length ? (
             <ol className={styles.episodeGrid}>
               {courseLessons.map((lesson, index) => {
+                const lessonHref = getLessonPlaybackHref({
+                  courseId: course.id,
+                  isEnrolled: Boolean(enrollment),
+                  lesson,
+                });
                 const content = (
                   <>
                     <div className={styles.episodeVisual}>
@@ -254,7 +249,8 @@ export default async function CourseDetailPage({
                       </span>
                       <h3>{lesson.title}</h3>
                       <small>
-                        <Clock3 aria-hidden="true" size={14} /> SHORT VIDEO
+                        <Clock3 aria-hidden="true" size={14} />{' '}
+                        {lesson.has_video ? 'SHORT VIDEO' : '편성 대기'}
                       </small>
                     </div>
                   </>
@@ -262,12 +258,15 @@ export default async function CourseDetailPage({
 
                 return (
                   <li key={lesson.id}>
-                    {enrollment ? (
-                      <Link href={`/courses/${course.id}/lessons/${lesson.id}`}>
-                        {content}
-                      </Link>
+                    {lessonHref ? (
+                      <Link href={lessonHref}>{content}</Link>
                     ) : (
-                      <div aria-label={`${index + 1}화, 대여 후 재생 가능`}>
+                      <div
+                        aria-label={
+                          lesson.has_video
+                            ? `${index + 1}화, 대여 후 재생 가능`
+                            : `${index + 1}화, 영상 편성 대기`
+                        }>
                         {content}
                       </div>
                     )}

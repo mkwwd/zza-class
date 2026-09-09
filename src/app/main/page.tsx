@@ -11,7 +11,12 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 
 import { isAdmin as checkIsAdmin } from '@/lib/auth/access';
-import { sumPlayableRuntimeSeconds } from '@/lib/courses/course-runtime';
+import {
+  getCourseGenreLabels,
+  getPublicCoursePlayback,
+  type PublicCourseGenreRow,
+  type PublicLessonMetadata,
+} from '@/lib/courses/public-course-metadata';
 import {
   buildVideoRoomCards,
   pickFeaturedVideoRoomCard,
@@ -37,15 +42,12 @@ type CourseRow = {
   thumbnail_url: string | null;
 };
 
-type LessonRow = {
+type LessonRow = PublicLessonMetadata & {
   course_id: string;
-  duration_seconds: number | null;
-  has_video: boolean;
 };
 
-type CourseGenreRow = {
+type CourseGenreRow = PublicCourseGenreRow & {
   course_id: string;
-  genres: { label_en: string } | { label_en: string }[] | null;
 };
 
 type NavigationItem = {
@@ -228,7 +230,7 @@ export default async function MainPage({ searchParams }: MainPageProps) {
     ? await Promise.all([
         supabase
           .from('lessons')
-          .select('course_id, duration_seconds, has_video')
+          .select('id, course_id, duration_seconds, has_video')
           .in('course_id', courseIds),
         supabase
           .from('course_genres')
@@ -260,14 +262,12 @@ export default async function MainPage({ searchParams }: MainPageProps) {
 
   const genreLabelsByCourseId = new Map<string, string[]>();
   for (const courseGenre of courseGenres) {
-    const genre = Array.isArray(courseGenre.genres)
-      ? courseGenre.genres[0]
-      : courseGenre.genres;
+    const [genreLabel] = getCourseGenreLabels([courseGenre]);
 
-    if (!genre) continue;
+    if (!genreLabel) continue;
 
     const labels = genreLabelsByCourseId.get(courseGenre.course_id) ?? [];
-    labels.push(genre.label_en);
+    labels.push(genreLabel);
     genreLabelsByCourseId.set(courseGenre.course_id, labels);
   }
 
@@ -281,9 +281,7 @@ export default async function MainPage({ searchParams }: MainPageProps) {
   const cards = buildVideoRoomCards(
     visibleCourses.map((course) => {
       const courseLessons = lessonsByCourseId.get(course.id) ?? [];
-      const playableDurations = courseLessons
-        .filter((lesson) => lesson.has_video)
-        .map((lesson) => lesson.duration_seconds);
+      const playback = getPublicCoursePlayback(courseLessons);
 
       return {
         id: course.id,
@@ -291,10 +289,10 @@ export default async function MainPage({ searchParams }: MainPageProps) {
         description: course.description,
         thumbnailUrl: course.thumbnail_url,
         lessonCount: courseLessons.length,
-        hasPlayableVideo: courseLessons.some((lesson) => lesson.has_video),
+        hasPlayableVideo: playback.hasPlayableVideo,
         isEnrolled: enrolledCourseIds.has(course.id),
         genreLabels: genreLabelsByCourseId.get(course.id) ?? [],
-        runtimeSeconds: sumPlayableRuntimeSeconds(playableDurations),
+        runtimeSeconds: playback.runtimeSeconds,
       };
     }),
   );

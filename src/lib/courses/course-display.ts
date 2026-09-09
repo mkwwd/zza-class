@@ -19,6 +19,7 @@ export type TapeDisplay = {
 
 type TapeDisplayInput = {
   index: number;
+  hasPlayableVideo: boolean;
   isEnrolled?: boolean;
   lessonCount: number;
   runtimeSeconds: number | null;
@@ -26,6 +27,7 @@ type TapeDisplayInput = {
 
 export function getTapeDisplay({
   index,
+  hasPlayableVideo,
   isEnrolled = false,
   lessonCount,
   runtimeSeconds,
@@ -37,8 +39,14 @@ export function getTapeDisplay({
     episodeLabel: normalizedLessonCount
       ? `${normalizedLessonCount}화`
       : '준비 중',
-    runtimeLabel: formatRuntimeLabel(runtimeSeconds),
-    shelfLabel: isEnrolled ? '보관 중' : '대여 가능',
+    runtimeLabel: hasPlayableVideo
+      ? formatRuntimeLabel(runtimeSeconds)
+      : '편성 대기',
+    shelfLabel: hasPlayableVideo
+      ? isEnrolled
+        ? '보관 중'
+        : '대여 가능'
+      : '편성 대기',
     tone: tapeTones[index % tapeTones.length],
   };
 }

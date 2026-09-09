@@ -12,6 +12,7 @@ export type ShelfTape = {
   title: string;
   description: string | null;
   thumbnailUrl: string | null;
+  hasPlayableVideo: boolean;
   display: TapeDisplay;
 };
 
@@ -208,11 +209,19 @@ export function VideoShelfTheater({
                     '아직 시놉시스가 비어 있어요. 제목을 열면 등록된 회차를 확인할 수 있습니다.'}
                 </p>
                 <div className="grid grid-cols-2 gap-2">
-                  <Link
-                    className="flex h-12 items-center justify-center bg-[#ff4d6d] px-4 text-sm font-black text-[#18070d] transition hover:bg-[#ff7a92] focus:ring-2 focus:ring-[#ff8ea3] focus:outline-none"
-                    href={`/courses/${selectedTape.id}`}>
-                    TV에서 회차 선택
-                  </Link>
+                  {selectedTape.hasPlayableVideo ? (
+                    <Link
+                      className="flex h-12 items-center justify-center bg-[#ff4d6d] px-4 text-sm font-black text-[#18070d] transition hover:bg-[#ff7a92] focus:ring-2 focus:ring-[#ff8ea3] focus:outline-none"
+                      href={`/courses/${selectedTape.id}`}>
+                      TV에서 회차 선택
+                    </Link>
+                  ) : (
+                    <span
+                      aria-disabled="true"
+                      className="flex h-12 items-center justify-center bg-[#201a18] px-4 text-sm font-black text-[#8e877f]">
+                      회차 준비중
+                    </span>
+                  )}
                   <Link
                     className="flex h-12 items-center justify-center border border-[#60473c] px-4 text-sm font-black text-[#f8efe7] transition hover:border-[#ff8ea3] focus:ring-2 focus:ring-[#ff8ea3] focus:outline-none"
                     href={userHref}>

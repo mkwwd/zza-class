@@ -14,6 +14,7 @@ describe('getTapeDisplay', () => {
     expect(
       getTapeDisplay({
         index: 2,
+        hasPlayableVideo: true,
         isEnrolled: true,
         lessonCount: 7,
         runtimeSeconds: 188,
@@ -31,6 +32,7 @@ describe('getTapeDisplay', () => {
     expect(
       getTapeDisplay({
         index: 5,
+        hasPlayableVideo: false,
         isEnrolled: false,
         lessonCount: 0,
         runtimeSeconds: null,
@@ -42,9 +44,24 @@ describe('getTapeDisplay', () => {
     expect(
       getTapeDisplay({
         index: 0,
+        hasPlayableVideo: true,
         lessonCount: 4,
         runtimeSeconds: null,
       }).runtimeLabel,
     ).toBe('시간 미등록');
+  });
+
+  it('keeps courses without playable episodes in a pending state', () => {
+    expect(
+      getTapeDisplay({
+        index: 0,
+        hasPlayableVideo: false,
+        lessonCount: 2,
+        runtimeSeconds: null,
+      }),
+    ).toMatchObject({
+      runtimeLabel: '편성 대기',
+      shelfLabel: '편성 대기',
+    });
   });
 });
