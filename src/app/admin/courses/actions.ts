@@ -38,7 +38,15 @@ export async function createCourse(formData: FormData) {
   });
 
   if (genreError) {
-    await supabase.from('courses').delete().eq('id', data.id);
+    const { error: cleanupError } = await supabase
+      .from('courses')
+      .delete()
+      .eq('id', data.id);
+
+    if (cleanupError) {
+      redirect('/admin/courses/new?error=course-cleanup-failed');
+    }
+
     redirect('/admin/courses/new?error=invalid-course');
   }
 
@@ -103,7 +111,7 @@ export async function addLesson(courseId: string, formData: FormData) {
     redirect(`/admin/courses/${courseId}/edit?error=invalid-lesson`);
   }
 
-  const { data: lesson } = await supabase
+  const { data: lesson, error: lessonError } = await supabase
     .from('lessons')
     .insert({
       course_id: courseId,
@@ -115,12 +123,30 @@ export async function addLesson(courseId: string, formData: FormData) {
     .select('id')
     .single();
 
-  if (lesson) {
-    await supabase.from('lesson_contents').insert({
+  if (lessonError || !lesson) {
+    redirect(`/admin/courses/${courseId}/edit?error=invalid-lesson`);
+  }
+
+  const { error: contentError } = await supabase
+    .from('lesson_contents')
+    .insert({
       content: parsed.value.content,
       lesson_id: lesson.id,
       video_url: parsed.value.videoUrl,
     });
+
+  if (contentError) {
+    const { error: cleanupError } = await supabase
+      .from('lessons')
+      .delete()
+      .eq('id', lesson.id)
+      .eq('course_id', courseId);
+
+    if (cleanupError) {
+      redirect(`/admin/courses/${courseId}/edit?error=lesson-cleanup-failed`);
+    }
+
+    redirect(`/admin/courses/${courseId}/edit?error=invalid-lesson`);
   }
 
   revalidatePath(`/admin/courses/${courseId}/edit`);
@@ -139,7 +165,18 @@ export async function updateLesson(
     redirect(`/admin/courses/${courseId}/edit?error=invalid-lesson`);
   }
 
-  await supabase
+  const { data: previousLesson, error: previousLessonError } = await supabase
+    .from('lessons')
+    .select('title, sort_order, duration_seconds, has_video, updated_at')
+    .eq('id', lessonId)
+    .eq('course_id', courseId)
+    .maybeSingle();
+
+  if (previousLessonError || !previousLesson) {
+    redirect(`/admin/courses/${courseId}/edit?error=invalid-lesson`);
+  }
+
+  const { error: lessonError } = await supabase
     .from('lessons')
     .update({
       duration_seconds: parsed.value.durationSeconds,
@@ -151,7 +188,11 @@ export async function updateLesson(
     .eq('id', lessonId)
     .eq('course_id', courseId);
 
-  await supabase.from('lesson_contents').upsert(
+  if (lessonError) {
+    redirect(`/admin/courses/${courseId}/edit?error=invalid-lesson`);
+  }
+
+  const { error: contentError } = await supabase.from('lesson_contents').upsert(
     {
       content: parsed.value.content,
       lesson_id: lessonId,
@@ -161,6 +202,20 @@ export async function updateLesson(
     { onConflict: 'lesson_id' },
   );
 
+  if (contentError) {
+    const { error: rollbackError } = await supabase
+      .from('lessons')
+      .update(previousLesson)
+      .eq('id', lessonId)
+      .eq('course_id', courseId);
+
+    if (rollbackError) {
+      redirect(`/admin/courses/${courseId}/edit?error=lesson-cleanup-failed`);
+    }
+
+    redirect(`/admin/courses/${courseId}/edit?error=invalid-lesson`);
+  }
+
   revalidatePath(`/admin/courses/${courseId}/edit`);
   revalidatePath(`/courses/${courseId}/lessons/${lessonId}`);
 }
@@ -168,11 +223,15 @@ export async function updateLesson(
 export async function deleteLesson(courseId: string, lessonId: string) {
   const { supabase } = await requireAdmin();
 
-  await supabase
+  const { error } = await supabase
     .from('lessons')
     .delete()
     .eq('id', lessonId)
     .eq('course_id', courseId);
+
+  if (error) {
+    redirect(`/admin/courses/${courseId}/edit?error=invalid-lesson`);
+  }
 
   revalidatePath(`/admin/courses/${courseId}/edit`);
   revalidatePath(`/courses/${courseId}`);

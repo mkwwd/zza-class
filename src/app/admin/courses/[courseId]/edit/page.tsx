@@ -39,15 +39,20 @@ export default async function EditCoursePage({
 
   if (!course) notFound();
 
-  const { data: genres } = await supabase
+  const { data: genres, error: genreCatalogError } = await supabase
     .from('genres')
     .select('slug, label_ko, label_en, sort_order')
     .order('sort_order', { ascending: true });
-  const { data: courseGenres } = await supabase
+  const { data: courseGenres, error: courseGenresError } = await supabase
     .from('course_genres')
     .select('genre_slug, position')
     .eq('course_id', course.id)
     .order('position', { ascending: true });
+
+  if (genreCatalogError || courseGenresError) {
+    throw new Error('Failed to load course genres.');
+  }
+
   const { data: lessons } = await supabase
     .from('lessons')
     .select('id, title, sort_order, duration_seconds')
@@ -89,7 +94,11 @@ export default async function EditCoursePage({
 
       <main className={styles.editorPage}>
         {error ? (
-          <p className={styles.formError}>입력 내용을 다시 확인해 주세요.</p>
+          <p className={styles.formError}>
+            {error === 'lesson-cleanup-failed'
+              ? '회차 저장 실패 후 데이터를 되돌리지 못했어요. 다시 저장하기 전에 현재 회차를 확인해 주세요.'
+              : '입력 내용을 다시 확인해 주세요.'}
+          </p>
         ) : null}
 
         <section className={styles.editorBand}>

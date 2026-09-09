@@ -1,7 +1,13 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { addLesson, createCourse, updateCourse } from './actions';
+import {
+  addLesson,
+  createCourse,
+  deleteLesson,
+  updateCourse,
+  updateLesson,
+} from './actions';
 import NewCoursePage from './new/page';
 
 const { genreRows, redirectMock, requireAdminMock } = vi.hoisted(() => ({
@@ -59,6 +65,25 @@ describe('new video registration flow', () => {
     expect(markup).not.toContain('name="videoUrl"');
   });
 
+  it('does not render an empty selector when the genre catalog query fails', async () => {
+    requireAdminMock.mockResolvedValue({
+      supabase: {
+        from: vi.fn().mockReturnValue({
+          select: vi.fn().mockReturnValue({
+            order: vi.fn().mockResolvedValue({
+              data: null,
+              error: new Error('catalog failure'),
+            }),
+          }),
+        }),
+      },
+    });
+
+    await expect(
+      NewCoursePage({ searchParams: Promise.resolve({}) }),
+    ).rejects.toThrow('Failed to load genre catalog.');
+  });
+
   it('removes a new course when genre replacement fails', async () => {
     const cleanupEq = vi.fn().mockResolvedValue({ error: null });
     const cleanupDelete = vi.fn().mockReturnValue({ eq: cleanupEq });
@@ -91,6 +116,36 @@ describe('new video registration flow', () => {
     });
     expect(cleanupDelete).toHaveBeenCalledOnce();
     expect(cleanupEq).toHaveBeenCalledWith('id', 'course-1');
+  });
+
+  it('reports when a failed genre replacement course cannot be removed', async () => {
+    const cleanupEq = vi
+      .fn()
+      .mockResolvedValue({ error: new Error('cleanup failure') });
+    const cleanupDelete = vi.fn().mockReturnValue({ eq: cleanupEq });
+    const insertSingle = vi.fn().mockResolvedValue({
+      data: { id: 'course-1' },
+      error: null,
+    });
+    const insert = vi.fn().mockReturnValue({
+      select: vi.fn().mockReturnValue({ single: insertSingle }),
+    });
+    const from = vi.fn().mockReturnValue({ delete: cleanupDelete, insert });
+    const rpc = vi
+      .fn()
+      .mockResolvedValue({ error: new Error('genre failure') });
+
+    requireAdminMock.mockResolvedValue({
+      supabase: { from, rpc },
+      user: { id: 'admin-1' },
+    });
+
+    const formData = new FormData();
+    formData.set('title', '밤의 비디오');
+
+    await expect(createCourse(formData)).rejects.toThrow(
+      'redirect:/admin/courses/new?error=course-cleanup-failed',
+    );
   });
 
   it('stores duration and availability on the lesson row', async () => {
@@ -128,6 +183,141 @@ describe('new video registration flow', () => {
       lesson_id: 'lesson-1',
       video_url: 'https://media.example.com/episode.mp4',
     });
+  });
+
+  it('removes a new lesson when protected content insertion fails', async () => {
+    const lessonSingle = vi
+      .fn()
+      .mockResolvedValue({ data: { id: 'lesson-1' }, error: null });
+    const lessonInsert = vi.fn().mockReturnValue({
+      select: vi.fn().mockReturnValue({ single: lessonSingle }),
+    });
+    const cleanupEqCourse = vi.fn().mockResolvedValue({ error: null });
+    const cleanupEqLesson = vi.fn().mockReturnValue({ eq: cleanupEqCourse });
+    const lessonDelete = vi.fn().mockReturnValue({ eq: cleanupEqLesson });
+    const contentInsert = vi
+      .fn()
+      .mockResolvedValue({ error: new Error('content failure') });
+    const from = vi.fn((table: string) =>
+      table === 'lessons'
+        ? { delete: lessonDelete, insert: lessonInsert }
+        : { insert: contentInsert },
+    );
+
+    requireAdminMock.mockResolvedValue({ supabase: { from } });
+
+    const formData = new FormData();
+    formData.set('title', '1화');
+    formData.set('sortOrder', '1');
+    formData.set('durationSeconds', '146');
+    formData.set('videoUrl', 'https://media.example.com/episode.mp4');
+
+    await expect(addLesson('course-1', formData)).rejects.toThrow(
+      'redirect:/admin/courses/course-1/edit?error=invalid-lesson',
+    );
+    expect(cleanupEqLesson).toHaveBeenCalledWith('id', 'lesson-1');
+    expect(cleanupEqCourse).toHaveBeenCalledWith('course_id', 'course-1');
+  });
+
+  it('restores lesson metadata when protected content update fails', async () => {
+    const previousLesson = {
+      duration_seconds: 146,
+      has_video: true,
+      sort_order: 1,
+      title: '기존 1화',
+      updated_at: '2026-09-10T00:00:00.000Z',
+    };
+    const maybeSingle = vi
+      .fn()
+      .mockResolvedValue({ data: previousLesson, error: null });
+    const selectCourseEq = vi.fn().mockReturnValue({ maybeSingle });
+    const selectLessonEq = vi.fn().mockReturnValue({ eq: selectCourseEq });
+    const select = vi.fn().mockReturnValue({ eq: selectLessonEq });
+    const updateCourseEq = vi.fn().mockResolvedValue({ error: null });
+    const updateLessonEq = vi.fn().mockReturnValue({ eq: updateCourseEq });
+    const update = vi.fn().mockReturnValue({ eq: updateLessonEq });
+    const upsert = vi
+      .fn()
+      .mockResolvedValue({ error: new Error('content failure') });
+    const from = vi.fn((table: string) =>
+      table === 'lessons' ? { select, update } : { upsert },
+    );
+
+    requireAdminMock.mockResolvedValue({ supabase: { from } });
+
+    const formData = new FormData();
+    formData.set('title', '수정 1화');
+    formData.set('sortOrder', '2');
+    formData.set('durationSeconds', '212');
+    formData.set('videoUrl', 'https://media.example.com/replacement.mp4');
+
+    await expect(
+      updateLesson('course-1', 'lesson-1', formData),
+    ).rejects.toThrow(
+      'redirect:/admin/courses/course-1/edit?error=invalid-lesson',
+    );
+    expect(update).toHaveBeenCalledTimes(2);
+    expect(update).toHaveBeenLastCalledWith(previousLesson);
+  });
+
+  it('reports when lesson metadata rollback fails', async () => {
+    const maybeSingle = vi.fn().mockResolvedValue({
+      data: {
+        duration_seconds: 146,
+        has_video: true,
+        sort_order: 1,
+        title: '기존 1화',
+        updated_at: '2026-09-10T00:00:00.000Z',
+      },
+      error: null,
+    });
+    const selectCourseEq = vi.fn().mockReturnValue({ maybeSingle });
+    const selectLessonEq = vi.fn().mockReturnValue({ eq: selectCourseEq });
+    const select = vi.fn().mockReturnValue({ eq: selectLessonEq });
+    const updateCourseEq = vi
+      .fn()
+      .mockResolvedValueOnce({ error: null })
+      .mockResolvedValueOnce({ error: new Error('rollback failure') });
+    const updateLessonEq = vi.fn().mockReturnValue({ eq: updateCourseEq });
+    const update = vi.fn().mockReturnValue({ eq: updateLessonEq });
+    const upsert = vi
+      .fn()
+      .mockResolvedValue({ error: new Error('content failure') });
+    const from = vi.fn((table: string) =>
+      table === 'lessons' ? { select, update } : { upsert },
+    );
+
+    requireAdminMock.mockResolvedValue({ supabase: { from } });
+
+    const formData = new FormData();
+    formData.set('title', '수정 1화');
+    formData.set('sortOrder', '2');
+    formData.set('durationSeconds', '212');
+    formData.set('videoUrl', 'https://media.example.com/replacement.mp4');
+
+    await expect(
+      updateLesson('course-1', 'lesson-1', formData),
+    ).rejects.toThrow(
+      'redirect:/admin/courses/course-1/edit?error=lesson-cleanup-failed',
+    );
+  });
+
+  it('reports a lesson deletion failure', async () => {
+    const courseEq = vi
+      .fn()
+      .mockResolvedValue({ error: new Error('delete failure') });
+    const lessonEq = vi.fn().mockReturnValue({ eq: courseEq });
+    const deleteRow = vi.fn().mockReturnValue({ eq: lessonEq });
+
+    requireAdminMock.mockResolvedValue({
+      supabase: {
+        from: vi.fn().mockReturnValue({ delete: deleteRow }),
+      },
+    });
+
+    await expect(deleteLesson('course-1', 'lesson-1')).rejects.toThrow(
+      'redirect:/admin/courses/course-1/edit?error=invalid-lesson',
+    );
   });
 
   it('does not replace genres when the course update fails', async () => {

@@ -1,8 +1,14 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useReducer, useRef, useState } from 'react';
 
 import styles from './media-uploader.module.css';
+import {
+  createVideoUploadState,
+  isVideoUploadPending,
+  normalizeVideoDuration,
+  reduceVideoUploadState,
+} from './video-upload-state';
 
 type UploadResponse = {
   objectKey?: string;
@@ -111,40 +117,62 @@ function MediaUploader({
   urlName,
 }: MediaUploaderProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const uploaderRef = useRef<HTMLDivElement>(null);
   const [objectKey, setObjectKey] = useState(initialObjectKey ?? '');
   const [url, setUrl] = useState(initialUrl ?? '');
-  const [localPreviewUrl, setLocalPreviewUrl] = useState('');
-  const [durationSeconds, setDurationSeconds] = useState<number | null>(
-    initialDurationSeconds,
+  const [videoState, dispatchVideo] = useReducer(
+    reduceVideoUploadState,
+    createVideoUploadState(initialUrl ?? '', initialDurationSeconds),
   );
   const [durationMessage, setDurationMessage] = useState('');
   const [message, setMessage] = useState('');
   const [isUploading, setIsUploading] = useState(false);
+  const isVideoPending =
+    preview === 'video' && isVideoUploadPending(videoState);
+  const isSubmissionBlocked = isUploading || isVideoPending;
+  const committedUrl = preview === 'video' ? videoState.committed.url : url;
+  const previewUrl = preview === 'video' ? videoState.previewUrl : url;
 
   useEffect(
     () => () => {
-      if (localPreviewUrl) URL.revokeObjectURL(localPreviewUrl);
+      if (videoState.previewUrl.startsWith('blob:')) {
+        URL.revokeObjectURL(videoState.previewUrl);
+      }
     },
-    [localPreviewUrl],
+    [videoState.previewUrl],
   );
 
-  const previewUrl = localPreviewUrl || url;
+  useEffect(() => {
+    const form = uploaderRef.current?.closest('form');
+
+    if (!form) return;
+
+    function handlePendingSubmit(event: SubmitEvent) {
+      if (!isSubmissionBlocked) return;
+
+      event.preventDefault();
+      setMessage('파일 업로드와 재생시간 확인이 끝난 뒤 저장해 주세요.');
+    }
+
+    form.addEventListener('submit', handlePendingSubmit);
+    return () => form.removeEventListener('submit', handlePendingSubmit);
+  }, [isSubmissionBlocked]);
 
   function handleVideoMetadata(video: HTMLVideoElement) {
-    const seconds = Math.round(video.duration);
+    const durationSeconds = normalizeVideoDuration(video.duration);
 
-    if (Number.isFinite(seconds) && seconds >= 0) {
-      setDurationSeconds(seconds);
+    if (durationSeconds !== null) {
+      dispatchVideo({ durationSeconds, type: 'metadata-ready' });
       setDurationMessage('');
       return;
     }
 
-    setDurationSeconds(null);
+    dispatchVideo({ type: 'metadata-failed' });
     setDurationMessage('재생시간을 읽지 못했어요. 저장 후 다시 확인해 주세요.');
   }
 
   function handleVideoMetadataError() {
-    setDurationSeconds(null);
+    dispatchVideo({ type: 'metadata-failed' });
     setDurationMessage('재생시간을 읽지 못했어요. 저장 후 다시 확인해 주세요.');
   }
 
@@ -192,10 +220,20 @@ function MediaUploader({
         throw new Error('Cloudflare R2 업로드에 실패했어요.');
       }
 
-      setObjectKey(presignedUploadPayload.objectKey);
-      setUrl(presignedUploadPayload.publicUrl);
+      if (preview === 'video') {
+        dispatchVideo({
+          type: 'upload-succeeded',
+          url: presignedUploadPayload.publicUrl,
+        });
+      } else {
+        setObjectKey(presignedUploadPayload.objectKey);
+        setUrl(presignedUploadPayload.publicUrl);
+      }
       setMessage('업로드 완료. 저장 버튼을 눌러 반영해 주세요.');
     } catch (error) {
+      if (preview === 'video') {
+        dispatchVideo({ type: 'upload-failed' });
+      }
       setMessage(
         error instanceof Error
           ? error.message
@@ -207,14 +245,17 @@ function MediaUploader({
   }
 
   return (
-    <div className={styles.uploader}>
-      <input name={urlName} readOnly type="hidden" value={url} />
+    <div
+      aria-busy={isSubmissionBlocked}
+      className={styles.uploader}
+      ref={uploaderRef}>
+      <input name={urlName} readOnly type="hidden" value={committedUrl} />
       {durationName ? (
         <input
           name={durationName}
           readOnly
           type="hidden"
-          value={durationSeconds ?? ''}
+          value={videoState.committed.durationSeconds ?? ''}
         />
       ) : null}
       {objectKeyName ? (
@@ -228,10 +269,14 @@ function MediaUploader({
         </div>
         <button
           className={styles.chooseButton}
-          disabled={isUploading}
+          disabled={isSubmissionBlocked}
           onClick={() => fileInputRef.current?.click()}
           type="button">
-          {isUploading ? '업로드 중' : buttonLabel}
+          {isUploading
+            ? '업로드 중'
+            : isVideoPending
+              ? '영상 확인 중'
+              : buttonLabel}
         </button>
       </div>
 
@@ -243,8 +288,10 @@ function MediaUploader({
 
           if (file) {
             if (preview === 'video') {
-              setLocalPreviewUrl(URL.createObjectURL(file));
-              setDurationSeconds(null);
+              dispatchVideo({
+                previewUrl: URL.createObjectURL(file),
+                type: 'replacement-selected',
+              });
               setDurationMessage('');
             }
             void uploadFile(file);
@@ -276,7 +323,7 @@ function MediaUploader({
         />
       ) : null}
 
-      {!url ? (
+      {!previewUrl ? (
         <div
           className={`${styles.emptyPreview} ${preview === 'image' ? styles.posterPreview : ''}`}
           data-preview={preview === 'image' ? 'poster' : 'video'}>
@@ -284,9 +331,9 @@ function MediaUploader({
           <strong>{emptyLabel}</strong>
           <small>{accept.includes('image') ? 'JPG · PNG' : 'MP4 · WEBM'}</small>
         </div>
-      ) : (
-        <p className={styles.url}>{url}</p>
-      )}
+      ) : null}
+
+      {committedUrl ? <p className={styles.url}>{committedUrl}</p> : null}
 
       {message ? <p className={styles.message}>{message}</p> : null}
       {durationMessage ? (

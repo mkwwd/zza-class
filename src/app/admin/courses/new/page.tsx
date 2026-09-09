@@ -21,10 +21,15 @@ export default async function NewCoursePage({
 }: NewCoursePageProps) {
   const { supabase } = await requireAdmin();
   const { error } = await searchParams;
-  const { data: genres } = await supabase
+  const { data: genres, error: genreCatalogError } = await supabase
     .from('genres')
     .select('slug, label_ko, label_en, sort_order')
     .order('sort_order', { ascending: true });
+
+  if (genreCatalogError) {
+    throw new Error('Failed to load genre catalog.');
+  }
+
   const genreOptions: GenreOption[] = (genres ?? []).map((genre) => ({
     labelEn: genre.label_en,
     labelKo: genre.label_ko,
@@ -49,7 +54,11 @@ export default async function NewCoursePage({
       <main className={styles.registrationPage}>
         <form action={createCourse} className={styles.registrationForm}>
           {error ? (
-            <p className={styles.formError}>작품 제목을 확인해 주세요.</p>
+            <p className={styles.formError}>
+              {error === 'course-cleanup-failed'
+                ? '작품 저장 실패 후 임시 데이터를 정리하지 못했어요. 인벤토리에서 중복 작품을 확인해 주세요.'
+                : '작품 입력 내용을 확인해 주세요.'}
+            </p>
           ) : null}
 
           <div className={styles.registrationGrid}>
