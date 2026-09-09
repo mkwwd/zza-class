@@ -1,3 +1,4 @@
+import { parseGenreSlugs } from './genres';
 import type { CourseFormInput, CourseStatus, LessonFormInput } from './types';
 
 function readString(formData: FormData, key: string) {
@@ -17,6 +18,12 @@ export function parseCourseForm(
     return { ok: false, error: 'Course title is required.' };
   }
 
+  const genres = parseGenreSlugs(formData.getAll('genres'));
+
+  if (!genres.ok) {
+    return genres;
+  }
+
   return {
     ok: true,
     value: {
@@ -26,6 +33,7 @@ export function parseCourseForm(
       status: readStatus(formData),
       thumbnailUrl: readString(formData, 'thumbnailUrl'),
       thumbnailImageId: readString(formData, 'thumbnailImageId'),
+      genreSlugs: genres.value,
     },
   };
 }
@@ -40,6 +48,15 @@ export function parseLessonForm(
   }
 
   const sortOrder = Number.parseInt(readString(formData, 'sortOrder'), 10);
+  const durationValue = readString(formData, 'durationSeconds');
+  const durationSeconds = durationValue === '' ? null : Number(durationValue);
+
+  if (
+    durationSeconds !== null &&
+    (!Number.isInteger(durationSeconds) || durationSeconds < 0)
+  ) {
+    return { ok: false, error: 'Lesson duration must be whole seconds.' };
+  }
 
   return {
     ok: true,
@@ -48,6 +65,7 @@ export function parseLessonForm(
       content: readString(formData, 'content'),
       videoUrl: readString(formData, 'videoUrl'),
       sortOrder: Number.isFinite(sortOrder) ? sortOrder : 0,
+      durationSeconds,
     },
   };
 }

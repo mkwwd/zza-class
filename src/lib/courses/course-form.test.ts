@@ -14,6 +14,8 @@ describe('course form parsing', () => {
       'https://media.example.com/thumbnails/course-123.png',
     );
     formData.set('thumbnailImageId', 'course-image-id');
+    formData.append('genres', 'drama');
+    formData.append('genres', 'fantasy');
 
     expect(parseCourseForm(formData)).toEqual({
       ok: true,
@@ -24,6 +26,7 @@ describe('course form parsing', () => {
         status: 'published',
         thumbnailUrl: 'https://media.example.com/thumbnails/course-123.png',
         thumbnailImageId: 'course-image-id',
+        genreSlugs: ['drama', 'fantasy'],
       },
     });
   });
@@ -52,8 +55,27 @@ describe('course form parsing', () => {
         status: 'draft',
         thumbnailUrl: '',
         thumbnailImageId: '',
+        genreSlugs: [],
       },
     });
+  });
+
+  it('rejects more than two selected genres', () => {
+    const formData = new FormData();
+    formData.set('title', 'React Basics');
+    formData.append('genres', 'drama');
+    formData.append('genres', 'fantasy');
+    formData.append('genres', 'romance');
+
+    expect(parseCourseForm(formData).ok).toBe(false);
+  });
+
+  it('rejects a genre outside the fixed catalog', () => {
+    const formData = new FormData();
+    formData.set('title', 'React Basics');
+    formData.append('genres', 'documentary');
+
+    expect(parseCourseForm(formData).ok).toBe(false);
   });
 });
 
@@ -64,6 +86,7 @@ describe('lesson form parsing', () => {
     formData.set('content', 'React is a UI library.');
     formData.set('videoUrl', 'https://example.com/video');
     formData.set('sortOrder', '2');
+    formData.set('durationSeconds', '146');
     formData.set(
       'thumbnailUrl',
       'https://media.example.com/thumbnails/lesson-123.png',
@@ -77,6 +100,7 @@ describe('lesson form parsing', () => {
         content: 'React is a UI library.',
         videoUrl: 'https://example.com/video',
         sortOrder: 2,
+        durationSeconds: 146,
       },
     });
   });
@@ -103,7 +127,41 @@ describe('lesson form parsing', () => {
         content: '',
         videoUrl: '',
         sortOrder: 0,
+        durationSeconds: null,
       },
     });
+  });
+
+  it('treats an empty duration as missing metadata', () => {
+    const formData = new FormData();
+    formData.set('title', 'Intro');
+    formData.set('durationSeconds', '');
+
+    expect(parseLessonForm(formData)).toEqual({
+      ok: true,
+      value: {
+        title: 'Intro',
+        content: '',
+        videoUrl: '',
+        sortOrder: 0,
+        durationSeconds: null,
+      },
+    });
+  });
+
+  it('rejects a negative duration', () => {
+    const formData = new FormData();
+    formData.set('title', 'Intro');
+    formData.set('durationSeconds', '-1');
+
+    expect(parseLessonForm(formData).ok).toBe(false);
+  });
+
+  it('rejects a malformed duration', () => {
+    const formData = new FormData();
+    formData.set('title', 'Intro');
+    formData.set('durationSeconds', '2.5');
+
+    expect(parseLessonForm(formData).ok).toBe(false);
   });
 });
