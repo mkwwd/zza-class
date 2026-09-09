@@ -21,11 +21,27 @@ create table if not exists public.profiles (
 );
 
 create table if not exists public.genres (
-  slug text primary key,
+  slug text primary key
+    constraint genres_slug_fixed_catalog
+    check (slug in ('drama', 'romance', 'thriller', 'fantasy', 'animation')),
   label_ko text not null,
   label_en text not null,
   sort_order smallint not null unique
 );
+
+do $$
+begin
+  if not exists (
+    select 1
+    from pg_constraint
+    where conname = 'genres_slug_fixed_catalog'
+      and conrelid = 'public.genres'::regclass
+  ) then
+    alter table public.genres
+      add constraint genres_slug_fixed_catalog
+      check (slug in ('drama', 'romance', 'thriller', 'fantasy', 'animation'));
+  end if;
+end $$;
 
 create table if not exists public.courses (
   id uuid primary key default gen_random_uuid(),
@@ -251,7 +267,15 @@ begin
     select 1
     from unnest(normalized_genre_slugs) as requested(slug)
     left join public.genres as genre on genre.slug = requested.slug
-    where requested.slug is null or genre.slug is null
+    where requested.slug is null
+      or requested.slug not in (
+        'drama',
+        'romance',
+        'thriller',
+        'fantasy',
+        'animation'
+      )
+      or genre.slug is null
   ) then
     raise exception using
       errcode = '22023',
