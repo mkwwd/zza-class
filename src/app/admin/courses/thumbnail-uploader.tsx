@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import styles from './media-uploader.module.css';
 
@@ -17,11 +17,13 @@ type MediaUploaderProps = {
   description: string;
   emptyLabel: string;
   initialObjectKey?: string | null;
+  initialDurationSeconds?: number | null;
   initialUrl?: string | null;
   kind: 'thumbnail' | 'video';
   label: string;
   objectKeyName?: string;
   preview: 'image' | 'video';
+  durationName?: string;
   urlName: string;
 };
 
@@ -36,6 +38,8 @@ type ThumbnailUploaderProps = {
 
 type VideoUploaderProps = {
   description: string;
+  durationName?: string;
+  initialDurationSeconds?: number | null;
   initialVideoUrl?: string | null;
   label: string;
   urlName?: string;
@@ -68,6 +72,8 @@ export function ThumbnailUploader({
 
 export function VideoUploader({
   description,
+  durationName = 'durationSeconds',
+  initialDurationSeconds = null,
   initialVideoUrl = '',
   label,
   urlName = 'videoUrl',
@@ -77,7 +83,9 @@ export function VideoUploader({
       accept="video/mp4,video/webm"
       buttonLabel="영상 선택"
       description={description}
+      durationName={durationName}
       emptyLabel="등록된 영상이 없어요."
+      initialDurationSeconds={initialDurationSeconds}
       initialUrl={initialVideoUrl}
       kind="video"
       label={label}
@@ -91,7 +99,9 @@ function MediaUploader({
   accept,
   buttonLabel,
   description,
+  durationName,
   emptyLabel,
+  initialDurationSeconds = null,
   initialObjectKey = '',
   initialUrl = '',
   kind,
@@ -103,8 +113,40 @@ function MediaUploader({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [objectKey, setObjectKey] = useState(initialObjectKey ?? '');
   const [url, setUrl] = useState(initialUrl ?? '');
+  const [localPreviewUrl, setLocalPreviewUrl] = useState('');
+  const [durationSeconds, setDurationSeconds] = useState<number | null>(
+    initialDurationSeconds,
+  );
+  const [durationMessage, setDurationMessage] = useState('');
   const [message, setMessage] = useState('');
   const [isUploading, setIsUploading] = useState(false);
+
+  useEffect(
+    () => () => {
+      if (localPreviewUrl) URL.revokeObjectURL(localPreviewUrl);
+    },
+    [localPreviewUrl],
+  );
+
+  const previewUrl = localPreviewUrl || url;
+
+  function handleVideoMetadata(video: HTMLVideoElement) {
+    const seconds = Math.round(video.duration);
+
+    if (Number.isFinite(seconds) && seconds >= 0) {
+      setDurationSeconds(seconds);
+      setDurationMessage('');
+      return;
+    }
+
+    setDurationSeconds(null);
+    setDurationMessage('재생시간을 읽지 못했어요. 저장 후 다시 확인해 주세요.');
+  }
+
+  function handleVideoMetadataError() {
+    setDurationSeconds(null);
+    setDurationMessage('재생시간을 읽지 못했어요. 저장 후 다시 확인해 주세요.');
+  }
 
   async function uploadFile(file: File) {
     setIsUploading(true);
@@ -167,6 +209,14 @@ function MediaUploader({
   return (
     <div className={styles.uploader}>
       <input name={urlName} readOnly type="hidden" value={url} />
+      {durationName ? (
+        <input
+          name={durationName}
+          readOnly
+          type="hidden"
+          value={durationSeconds ?? ''}
+        />
+      ) : null}
       {objectKeyName ? (
         <input name={objectKeyName} readOnly type="hidden" value={objectKey} />
       ) : null}
@@ -192,6 +242,11 @@ function MediaUploader({
           const file = event.currentTarget.files?.[0];
 
           if (file) {
+            if (preview === 'video') {
+              setLocalPreviewUrl(URL.createObjectURL(file));
+              setDurationSeconds(null);
+              setDurationMessage('');
+            }
             void uploadFile(file);
           }
         }}
@@ -199,18 +254,26 @@ function MediaUploader({
         type="file"
       />
 
-      {url && preview === 'image' ? (
+      {previewUrl && preview === 'image' ? (
         <div
           aria-label={`${label} 미리보기`}
           className={styles.imagePreview}
           data-preview="poster"
           role="img"
-          style={{ backgroundImage: `url(${url})` }}
+          style={{ backgroundImage: `url(${previewUrl})` }}
         />
       ) : null}
 
-      {url && preview === 'video' ? (
-        <video className={styles.videoPreview} controls src={url} />
+      {previewUrl && preview === 'video' ? (
+        <video
+          className={styles.videoPreview}
+          controls
+          onError={handleVideoMetadataError}
+          onLoadedMetadata={(event) => {
+            handleVideoMetadata(event.currentTarget);
+          }}
+          src={previewUrl}
+        />
       ) : null}
 
       {!url ? (
@@ -226,6 +289,11 @@ function MediaUploader({
       )}
 
       {message ? <p className={styles.message}>{message}</p> : null}
+      {durationMessage ? (
+        <p className={styles.message} role="status">
+          {durationMessage}
+        </p>
+      ) : null}
     </div>
   );
 }

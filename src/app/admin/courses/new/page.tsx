@@ -3,9 +3,11 @@ import Link from 'next/link';
 
 import { VideoRoomShell } from '@/components/video-room/VideoRoomShell';
 import { requireAdmin } from '@/lib/auth/server';
+import type { GenreOption, GenreSlug } from '@/lib/courses/genres';
 
 import styles from '../../admin-video-room.module.css';
 import { createCourse } from '../actions';
+import { GenreSelector } from '../genre-selector';
 import { ThumbnailUploader } from '../thumbnail-uploader';
 
 type NewCoursePageProps = {
@@ -17,8 +19,17 @@ export const dynamic = 'force-dynamic';
 export default async function NewCoursePage({
   searchParams,
 }: NewCoursePageProps) {
-  await requireAdmin();
+  const { supabase } = await requireAdmin();
   const { error } = await searchParams;
+  const { data: genres } = await supabase
+    .from('genres')
+    .select('slug, label_ko, label_en, sort_order')
+    .order('sort_order', { ascending: true });
+  const genreOptions: GenreOption[] = (genres ?? []).map((genre) => ({
+    labelEn: genre.label_en,
+    labelKo: genre.label_ko,
+    slug: genre.slug as GenreSlug,
+  }));
 
   return (
     <VideoRoomShell activeItem="upload" mode="staff" showStaffCat={false}>
@@ -69,6 +80,7 @@ export default async function NewCoursePage({
                   placeholder="작품의 분위기와 줄거리를 소개해 주세요."
                 />
               </label>
+              <GenreSelector options={genreOptions} />
               <label>
                 <span>
                   Staff 리코의 한마디 <small>선택</small>

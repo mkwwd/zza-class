@@ -14,7 +14,7 @@ export async function createCourse(formData: FormData) {
     redirect('/admin/courses/new?error=invalid-course');
   }
 
-  const { data } = await supabase
+  const { data, error: courseError } = await supabase
     .from('courses')
     .insert({
       created_by: user.id,
@@ -28,9 +28,23 @@ export async function createCourse(formData: FormData) {
     .select('id')
     .single();
 
+  if (courseError || !data) {
+    redirect('/admin/courses/new?error=invalid-course');
+  }
+
+  const { error: genreError } = await supabase.rpc('replace_course_genres', {
+    selected_genre_slugs: parsed.value.genreSlugs,
+    target_course_id: data.id,
+  });
+
+  if (genreError) {
+    await supabase.from('courses').delete().eq('id', data.id);
+    redirect('/admin/courses/new?error=invalid-course');
+  }
+
   revalidatePath('/admin');
   revalidatePath('/main');
-  redirect(data ? `/admin/courses/${data.id}/edit` : '/admin');
+  redirect(`/admin/courses/${data.id}/edit`);
 }
 
 export async function updateCourse(courseId: string, formData: FormData) {
@@ -41,7 +55,7 @@ export async function updateCourse(courseId: string, formData: FormData) {
     redirect(`/admin/courses/${courseId}/edit?error=invalid-course`);
   }
 
-  await supabase
+  const { error: courseError } = await supabase
     .from('courses')
     .update({
       description: parsed.value.description,
@@ -54,7 +68,21 @@ export async function updateCourse(courseId: string, formData: FormData) {
     })
     .eq('id', courseId);
 
+  if (courseError) {
+    redirect(`/admin/courses/${courseId}/edit?error=invalid-course`);
+  }
+
+  const { error: genreError } = await supabase.rpc('replace_course_genres', {
+    selected_genre_slugs: parsed.value.genreSlugs,
+    target_course_id: courseId,
+  });
+
+  if (genreError) {
+    redirect(`/admin/courses/${courseId}/edit?error=invalid-course`);
+  }
+
   revalidatePath('/admin');
+  revalidatePath('/main');
   revalidatePath(`/admin/courses/${courseId}/edit`);
 }
 
@@ -79,6 +107,8 @@ export async function addLesson(courseId: string, formData: FormData) {
     .from('lessons')
     .insert({
       course_id: courseId,
+      duration_seconds: parsed.value.durationSeconds,
+      has_video: Boolean(parsed.value.videoUrl),
       sort_order: parsed.value.sortOrder,
       title: parsed.value.title,
     })
@@ -112,6 +142,8 @@ export async function updateLesson(
   await supabase
     .from('lessons')
     .update({
+      duration_seconds: parsed.value.durationSeconds,
+      has_video: Boolean(parsed.value.videoUrl),
       sort_order: parsed.value.sortOrder,
       title: parsed.value.title,
       updated_at: new Date().toISOString(),

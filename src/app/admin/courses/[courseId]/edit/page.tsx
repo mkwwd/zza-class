@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation';
 
 import { VideoRoomShell } from '@/components/video-room/VideoRoomShell';
 import { requireAdmin } from '@/lib/auth/server';
+import type { GenreOption, GenreSlug } from '@/lib/courses/genres';
 import { formatLessonNumber } from '@/lib/courses/lesson-display';
 
 import styles from '../../../admin-video-room.module.css';
@@ -13,6 +14,7 @@ import {
   updateCourse,
   updateLesson,
 } from '../../actions';
+import { GenreSelector } from '../../genre-selector';
 import { ThumbnailUploader, VideoUploader } from '../../thumbnail-uploader';
 
 type EditCoursePageProps = {
@@ -37,9 +39,18 @@ export default async function EditCoursePage({
 
   if (!course) notFound();
 
+  const { data: genres } = await supabase
+    .from('genres')
+    .select('slug, label_ko, label_en, sort_order')
+    .order('sort_order', { ascending: true });
+  const { data: courseGenres } = await supabase
+    .from('course_genres')
+    .select('genre_slug, position')
+    .eq('course_id', course.id)
+    .order('position', { ascending: true });
   const { data: lessons } = await supabase
     .from('lessons')
-    .select('id, title, sort_order')
+    .select('id, title, sort_order, duration_seconds')
     .eq('course_id', course.id)
     .order('sort_order', { ascending: true });
   const lessonIds = (lessons ?? []).map((lesson) => lesson.id);
@@ -51,6 +62,14 @@ export default async function EditCoursePage({
     : { data: [] };
   const contentByLessonId = new Map(
     (lessonContents ?? []).map((content) => [content.lesson_id, content]),
+  );
+  const genreOptions: GenreOption[] = (genres ?? []).map((genre) => ({
+    labelEn: genre.label_en,
+    labelKo: genre.label_ko,
+    slug: genre.slug as GenreSlug,
+  }));
+  const selectedGenres = (courseGenres ?? []).map(
+    (courseGenre) => courseGenre.genre_slug as GenreSlug,
   );
 
   return (
@@ -101,6 +120,10 @@ export default async function EditCoursePage({
                   name="description"
                 />
               </label>
+              <GenreSelector
+                initialSelected={selectedGenres}
+                options={genreOptions}
+              />
               <label>
                 <span>Staff 리코의 한마디</span>
                 <textarea
@@ -221,6 +244,7 @@ export default async function EditCoursePage({
                         <div className={styles.episodeMediaGrid}>
                           <VideoUploader
                             description="등록된 영상을 교체할 수 있습니다."
+                            initialDurationSeconds={lesson.duration_seconds}
                             initialVideoUrl={content?.video_url}
                             label="회차 영상"
                           />

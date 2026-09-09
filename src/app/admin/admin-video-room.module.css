@@ -220,6 +220,109 @@
 .fieldsColumn strong { color: #ef7da0; font-size: 0.62rem; }
 .fieldsColumn small { color: #8f99a7; font-size: 0.62rem; }
 
+.genreSelector {
+  min-width: 0;
+  margin: 0;
+  border: 0;
+  padding: 0;
+}
+
+.genreSelector > legend {
+  color: #c8ced7;
+  padding: 0;
+  font-size: 0.76rem;
+  font-weight: 800;
+}
+
+.genreSelectorHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 7px;
+}
+
+.genreSelectorHeader p {
+  margin: 0;
+  color: #8f99a7;
+  font-size: 0.66rem;
+  font-weight: 650;
+  line-height: 1.5;
+}
+
+.genreSelectorHeader > span {
+  flex: 0 0 auto;
+  color: #cfc4f5;
+  font-size: 0.68rem;
+  font-variant-numeric: tabular-nums;
+  font-weight: 850;
+}
+
+.genreOptions {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.genreOption {
+  display: grid;
+  min-width: 0;
+  min-height: 52px;
+  cursor: pointer;
+  place-content: center;
+  gap: 3px;
+  border: 1px solid rgba(145, 169, 194, 0.24);
+  border-radius: 7px;
+  background: rgba(4, 11, 20, 0.72);
+  color: #c8ced7;
+  padding: 7px 10px;
+  font: inherit;
+  text-align: center;
+  transition: border-color 160ms ease, background-color 160ms ease, color 160ms ease;
+}
+
+.genreOption span {
+  overflow: hidden;
+  font-size: 0.72rem;
+  font-weight: 850;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.genreOption small {
+  overflow: hidden;
+  color: #778495;
+  font-size: 0.56rem;
+  font-weight: 750;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.genreOption:hover:not(:disabled) {
+  border-color: rgba(172, 150, 246, 0.7);
+  background: rgba(91, 69, 156, 0.22);
+  color: #f3ede7;
+}
+
+.genreOption[aria-pressed='true'] {
+  border-color: rgba(239, 125, 160, 0.68);
+  background: rgba(101, 80, 174, 0.42);
+  color: #fff7f2;
+}
+
+.genreOption[aria-pressed='true'] small { color: #e9c9ff; }
+
+.genreOption:focus-visible {
+  outline: 2px solid #ff7aa2;
+  outline-offset: 2px;
+}
+
+.genreOption:disabled {
+  cursor: not-allowed;
+  opacity: 0.42;
+}
+
 .fieldsColumn input,
 .fieldsColumn textarea,
 .fieldsColumn select,
@@ -341,4 +444,9 @@
   .episodeEditActions button,
   .episodeEditActions form { width: 100%; }
   .episodeEditActions form button { width: 100%; justify-content: center; }
+  .genreOptions { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .genreOption { transition: none; }
 }
