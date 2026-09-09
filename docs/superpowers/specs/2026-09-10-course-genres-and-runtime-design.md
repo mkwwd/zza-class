@@ -16,23 +16,35 @@ This change does not add genre administration, arbitrary custom genres, server-s
 
 ## Data Model
 
-Add the following columns through a Supabase migration and mirror them in `supabase/schema.sql`:
+Create a fixed genre catalog and a course-to-genre link table through a Supabase migration, then mirror them in `supabase/schema.sql`:
 
 ```sql
-alter table public.courses
-  add column if not exists genres text[] not null default '{}';
+create table public.genres (
+  slug text primary key,
+  label_ko text not null,
+  label_en text not null,
+  sort_order smallint not null unique
+);
+
+create table public.course_genres (
+  course_id uuid not null references public.courses(id) on delete cascade,
+  genre_slug text not null references public.genres(slug),
+  position smallint not null check (position between 1 and 2),
+  primary key (course_id, genre_slug),
+  unique (course_id, position)
+);
 
 alter table public.lesson_contents
   add column if not exists duration_seconds integer;
 ```
 
-Database constraints will enforce:
+The migration seeds `drama`, `romance`, `thriller`, `fantasy`, and `animation`. Public and authenticated users may read both genre tables; only administrators may create, update, or delete course links. Database constraints enforce:
 
-- `genres` contains no more than two values.
-- Every genre value is one of `drama`, `romance`, `thriller`, `fantasy`, or `animation`.
+- A course has at most two genre links through unique positions `1` and `2`.
+- Every course genre references a seeded catalog row.
 - `duration_seconds` is null or a non-negative integer.
 
-The application uses stable lowercase values in storage and Korean labels in administration UI. Public cards use the existing uppercase English labels.
+The application submits stable lowercase slugs. Administration UI reads Korean labels from the catalog, while public cards use the catalog's uppercase English labels.
 
 ## Administration Flow
 
@@ -46,7 +58,7 @@ The new-course and course-edit forms show five checkbox-style genre controls:
 - 판타지
 - 애니메이션
 
-Zero, one, or two selections are accepted. Selecting a third option is prevented in the UI and rejected by server-side form parsing. An empty selection is stored as an empty array and displayed as `장르 미등록`.
+Zero, one, or two selections are accepted. Selecting a third option is prevented in the UI and rejected by server-side form parsing. Selected order is stored as `course_genres.position`; no links are stored for an empty selection, which displays as `장르 미등록`.
 
 ### Episode upload and editing
 
@@ -58,11 +70,11 @@ If metadata cannot be read, the upload and lesson form remain usable. The hidden
 
 ## Server Data Flow
 
-- `parseCourseForm` parses repeated `genres` form values, de-duplicates them, validates the allowlist, and enforces the two-genre maximum.
-- `createCourse` and `updateCourse` persist the parsed genre array.
+- `parseCourseForm` parses repeated `genres` form values, de-duplicates them, validates the seeded slug allowlist, and enforces the two-genre maximum.
+- `createCourse` and `updateCourse` replace the course's `course_genres` rows with positions matching the submitted order.
 - `parseLessonForm` accepts an optional `durationSeconds` value and validates it as a non-negative integer.
 - `addLesson` and `updateLesson` persist duration to `lesson_contents.duration_seconds`.
-- Main-page queries select course genres and lesson durations. Durations are grouped by course and summed only when every playable episode has a known duration.
+- Main-page queries select genre links with catalog labels and lesson durations. Durations are grouped by course and summed only when every playable episode has a known duration.
 - Course-detail queries select lesson content durations and use the same aggregation utility.
 
 ## Display Rules
@@ -88,7 +100,7 @@ The old index-based genre rotation and six-minutes-per-episode estimate are remo
 - Invalid or excessive genre values return the existing invalid-course redirect state.
 - Invalid duration values return the existing invalid-lesson redirect state.
 - Browser metadata failures do not block upload; the UI explains that time will remain unregistered.
-- Existing rows remain valid because genres default to an empty array and duration is nullable.
+- Existing courses remain valid with no genre links, and existing lesson content remains valid because duration is nullable.
 
 ## Testing
 
@@ -104,6 +116,6 @@ The old index-based genre rotation and six-minutes-per-episode estimate are remo
 
 Implementation will be split into feature-focused commits:
 
-1. Database and parsing support for genres and duration.
+1. Relational genre schema and parsing support for genres and duration.
 2. Administration form and uploader metadata capture.
 3. Public runtime aggregation and genre display.
