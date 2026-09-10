@@ -88,9 +88,6 @@ function VhsTape({
 function CoverCase({ card }: { card: VideoRoomCard }) {
   return (
     <div className={styles.coverCase}>
-      <div className={styles.coverSpine} aria-hidden="true">
-        <span>{card.tapeCode}</span>
-      </div>
       <div
         aria-label={`${card.title} 작품 표지`}
         className={styles.coverArtwork}
