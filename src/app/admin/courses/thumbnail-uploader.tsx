@@ -18,20 +18,31 @@ type UploadResponse = {
 };
 
 type MediaUploaderProps = {
-  accept: string;
-  buttonLabel: string;
   description: string;
-  emptyLabel: string;
   initialObjectKey?: string | null;
   initialDurationSeconds?: number | null;
   initialUrl?: string | null;
   kind: 'thumbnail' | 'video';
   label: string;
   objectKeyName?: string;
-  preview: 'image' | 'video';
   durationName?: string;
   urlName: string;
 };
+
+const uploadCopy = {
+  thumbnail: {
+    accept: 'image/*',
+    buttonLabel: '이미지 선택',
+    emptyLabel: '등록된 썸네일이 없어요.',
+    formats: 'JPG · PNG',
+  },
+  video: {
+    accept: 'video/mp4,video/webm',
+    buttonLabel: '영상 선택',
+    emptyLabel: '등록된 영상이 없어요.',
+    formats: 'MP4 · WEBM',
+  },
+} as const;
 
 type ThumbnailUploaderProps = {
   description: string;
@@ -61,16 +72,12 @@ export function ThumbnailUploader({
 }: ThumbnailUploaderProps) {
   return (
     <MediaUploader
-      accept="image/*"
-      buttonLabel="이미지 선택"
       description={description}
-      emptyLabel="등록된 썸네일이 없어요."
       initialObjectKey={initialImageId}
       initialUrl={initialImageUrl}
       kind="thumbnail"
       label={label}
       objectKeyName={imageIdName}
-      preview="image"
       urlName={urlName}
     />
   );
@@ -86,36 +93,30 @@ export function VideoUploader({
 }: VideoUploaderProps) {
   return (
     <MediaUploader
-      accept="video/mp4,video/webm"
-      buttonLabel="영상 선택"
       description={description}
       durationName={durationName}
-      emptyLabel="등록된 영상이 없어요."
       initialDurationSeconds={initialDurationSeconds}
       initialUrl={initialVideoUrl}
       kind="video"
       label={label}
-      preview="video"
       urlName={urlName}
     />
   );
 }
 
 function MediaUploader({
-  accept,
-  buttonLabel,
   description,
   durationName,
-  emptyLabel,
   initialDurationSeconds = null,
   initialObjectKey = '',
   initialUrl = '',
   kind,
   label,
   objectKeyName,
-  preview,
   urlName,
 }: MediaUploaderProps) {
+  const copy = uploadCopy[kind];
+  const isVideo = kind === 'video';
   const fileInputRef = useRef<HTMLInputElement>(null);
   const uploaderRef = useRef<HTMLDivElement>(null);
   const [objectKey, setObjectKey] = useState(initialObjectKey ?? '');
@@ -127,11 +128,10 @@ function MediaUploader({
   const [durationMessage, setDurationMessage] = useState('');
   const [message, setMessage] = useState('');
   const [isUploading, setIsUploading] = useState(false);
-  const isVideoPending =
-    preview === 'video' && isVideoUploadPending(videoState);
+  const isVideoPending = isVideo && isVideoUploadPending(videoState);
   const isSubmissionBlocked = isUploading || isVideoPending;
-  const committedUrl = preview === 'video' ? videoState.committed.url : url;
-  const previewUrl = preview === 'video' ? videoState.previewUrl : url;
+  const committedUrl = isVideo ? videoState.committed.url : url;
+  const previewUrl = isVideo ? videoState.previewUrl : url;
 
   useEffect(
     () => () => {
@@ -220,7 +220,7 @@ function MediaUploader({
         throw new Error('Cloudflare R2 업로드에 실패했어요.');
       }
 
-      if (preview === 'video') {
+      if (isVideo) {
         dispatchVideo({
           type: 'upload-succeeded',
           url: presignedUploadPayload.publicUrl,
@@ -231,7 +231,7 @@ function MediaUploader({
       }
       setMessage('업로드 완료. 저장 버튼을 눌러 반영해 주세요.');
     } catch (error) {
-      if (preview === 'video') {
+      if (isVideo) {
         dispatchVideo({ type: 'upload-failed' });
       }
       setMessage(
@@ -276,18 +276,18 @@ function MediaUploader({
             ? '업로드 중'
             : isVideoPending
               ? '영상 확인 중'
-              : buttonLabel}
+              : copy.buttonLabel}
         </button>
       </div>
 
       <input
-        accept={accept}
+        accept={copy.accept}
         className="sr-only"
         onChange={(event) => {
           const file = event.currentTarget.files?.[0];
 
           if (file) {
-            if (preview === 'video') {
+            if (isVideo) {
               dispatchVideo({
                 previewUrl: URL.createObjectURL(file),
                 type: 'replacement-selected',
@@ -301,7 +301,7 @@ function MediaUploader({
         type="file"
       />
 
-      {previewUrl && preview === 'image' ? (
+      {previewUrl && !isVideo ? (
         <div
           aria-label={`${label} 미리보기`}
           className={styles.imagePreview}
@@ -311,7 +311,7 @@ function MediaUploader({
         />
       ) : null}
 
-      {previewUrl && preview === 'video' ? (
+      {previewUrl && isVideo ? (
         <video
           className={styles.videoPreview}
           controls
@@ -325,11 +325,11 @@ function MediaUploader({
 
       {!previewUrl ? (
         <div
-          className={`${styles.emptyPreview} ${preview === 'image' ? styles.posterPreview : ''}`}
-          data-preview={preview === 'image' ? 'poster' : 'video'}>
+          className={`${styles.emptyPreview} ${!isVideo ? styles.posterPreview : ''}`}
+          data-preview={isVideo ? 'video' : 'poster'}>
           <span aria-hidden="true">VR</span>
-          <strong>{emptyLabel}</strong>
-          <small>{accept.includes('image') ? 'JPG · PNG' : 'MP4 · WEBM'}</small>
+          <strong>{copy.emptyLabel}</strong>
+          <small>{copy.formats}</small>
         </div>
       ) : null}
 
