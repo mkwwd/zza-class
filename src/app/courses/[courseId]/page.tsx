@@ -58,7 +58,7 @@ export default async function CourseDetailPage({
   const profile = user ? await getUserProfile(supabase, user.id) : null;
   const { data: course, error: courseError } = await supabase
     .from('courses')
-    .select('*')
+    .select('id, title, description, staff_note, status, thumbnail_url')
     .eq('id', courseId)
     .maybeSingle();
 

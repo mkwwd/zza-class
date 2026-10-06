@@ -110,7 +110,7 @@ export function readR2Config(): R2Config | null {
   };
 }
 
-export function createR2Client({
+function createR2Client({
   accessKeyId,
   accountId,
   secretAccessKey,

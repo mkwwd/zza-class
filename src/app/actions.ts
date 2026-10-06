@@ -18,12 +18,12 @@ async function getOrigin() {
   return origin ?? 'http://localhost:3000';
 }
 
-function getCredentials(formData: FormData) {
+function getCredentials(formData: FormData, missingFieldsPath: string) {
   const email = String(formData.get('email') ?? '').trim();
   const password = String(formData.get('password') ?? '').trim();
 
   if (!email || !password) {
-    redirect('/?error=missing-fields');
+    redirect(missingFieldsPath);
   }
 
   return { email, password };
@@ -31,13 +31,11 @@ function getCredentials(formData: FormData) {
 
 export async function signUp(formData: FormData) {
   const supabase = await createClient();
-  const email = String(formData.get('email') ?? '').trim();
-  const password = String(formData.get('password') ?? '').trim();
   const origin = await getOrigin();
-
-  if (!email || !password) {
-    redirect('/?mode=signup&error=missing-fields');
-  }
+  const { email, password } = getCredentials(
+    formData,
+    '/?mode=signup&error=missing-fields',
+  );
 
   const { data, error } = await supabase.auth.signUp({
     email,
@@ -60,7 +58,10 @@ export async function signUp(formData: FormData) {
 
 export async function signIn(formData: FormData) {
   const supabase = await createClient();
-  const { email, password } = getCredentials(formData);
+  const { email, password } = getCredentials(
+    formData,
+    '/?error=missing-fields',
+  );
 
   const { error } = await supabase.auth.signInWithPassword({
     email,

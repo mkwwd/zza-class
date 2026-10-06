@@ -1,8 +1,8 @@
-export type EpisodeIdentifier = {
+type EpisodeIdentifier = {
   id: string;
 };
 
-export type MyBagTitle = {
+type MyBagTitle = {
   id: string;
   lessonIds: string[];
 };

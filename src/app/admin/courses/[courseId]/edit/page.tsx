@@ -33,7 +33,9 @@ export default async function EditCoursePage({
   const { supabase } = await requireAdmin();
   const { data: course } = await supabase
     .from('courses')
-    .select('*')
+    .select(
+      'id, title, description, staff_note, status, thumbnail_image_id, thumbnail_url',
+    )
     .eq('id', courseId)
     .maybeSingle();
 
@@ -78,7 +80,7 @@ export default async function EditCoursePage({
   );
 
   return (
-    <VideoRoomShell activeItem="inventory" mode="staff" showStaffCat={false}>
+    <VideoRoomShell activeItem="inventory" mode="staff">
       <header className={styles.editorHeader}>
         <div>
           <Link href="/admin">
