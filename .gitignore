@@ -2,6 +2,7 @@
 
 # dependencies
 /node_modules
+/.worktrees/
 /.pnp
 .pnp.*
 .yarn/*
@@ -23,6 +24,9 @@
 # misc
 .DS_Store
 *.pem
+.claude/settings.local.json
+.codex/hooks.json
+.impeccable/review/
 
 # debug
 npm-debug.log*

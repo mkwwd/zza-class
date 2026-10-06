@@ -1,69 +1,155 @@
-import Image from "next/image";
+import { CassetteTape, Headphones, Mail } from 'lucide-react';
+import Image from 'next/image';
+import Link from 'next/link';
+import { redirect } from 'next/navigation';
 
-export default function Home() {
+import { createClient, hasSupabaseEnv } from '@/lib/supabase/server';
+
+import { signIn, signUp } from './actions';
+import { AuthSubmitButton } from './auth-submit-button';
+import styles from './login-page.module.css';
+import { PasswordField } from './password-field';
+
+type LoginPageProps = {
+  searchParams: Promise<{
+    error?: string;
+    message?: string;
+    mode?: string;
+  }>;
+};
+
+const errorMessages: Record<string, string> = {
+  'missing-fields': '이메일과 비밀번호를 입력해 주세요.',
+  signin: '입장에 실패했어요. 이메일과 비밀번호를 확인해 주세요.',
+  signup: '가입에 실패했어요. 다른 이메일이나 비밀번호를 사용해 주세요.',
+};
+
+export default async function LoginPage({ searchParams }: LoginPageProps) {
+  const isConfigured = hasSupabaseEnv();
+  const { error, message, mode } = await searchParams;
+  const isSignup = mode === 'signup';
+
+  if (isConfigured) {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (user) {
+      redirect('/main');
+    }
+  }
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert h-5 w-[100px]"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the{" "}
-            <code className="rounded bg-black/[.06] px-1.5 py-0.5 font-mono text-[0.9em] dark:bg-white/[.08]">
-              page.tsx
-            </code>{" "}
-            file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+    <main className={styles.page}>
+      <section className={styles.shell}>
+        <div className={styles.scene}>
+          <Image
+            alt="포근한 고양이가 어두운 비디오룸에서 빈티지 TV를 보는 모습"
+            className={styles.sceneImage}
+            fill
+            priority
+            sizes="(max-width: 920px) 100vw, 58vw"
+            src="/images/video-room-login-scene.png"
+          />
+          <div className={styles.sceneShade} />
+
+          <Link
+            aria-label="비디오룸 작품 둘러보기"
+            className={styles.neonBrand}
+            href="/courses">
+            <CassetteTape aria-hidden="true" size={25} strokeWidth={1.8} />
+            <span>VIDEO ROOM</span>
+          </Link>
+
+          <div className={styles.sceneCaption}>
+            <span>TONIGHT&apos;S SCREENING</span>
+            <p>오늘 밤, 어떤 이야기를 빌려가실래요?</p>
+          </div>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert h-[14px] w-4"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+
+        <div className={styles.formSide}>
+          <div className={styles.panel}>
+            <header className={styles.brandHeader}>
+              <div className={styles.logoMark}>
+                <CassetteTape aria-hidden="true" size={32} strokeWidth={1.7} />
+              </div>
+              <div>
+                <strong>VIDEO ROOM</strong>
+                <span>SHORT VIDEO RENTAL SHOP</span>
+              </div>
+            </header>
+
+            <div className={styles.intro}>
+              <h1>{isSignup ? '새 보관함 만들기' : '다시 만났네요'}</h1>
+              <p>
+                {isSignup
+                  ? '계정을 만들고 마음에 든 숏드라마를 보관해 보세요.'
+                  : '로그인하고 보던 장면부터 다시 이어보세요.'}
+              </p>
+            </div>
+
+            {error ? (
+              <p className={styles.error} role="alert">
+                {errorMessages[error] ??
+                  '문제가 발생했어요. 다시 시도해 주세요.'}
+              </p>
+            ) : null}
+
+            {message === 'check-email' ? (
+              <p className={styles.notice} role="status">
+                이메일 인증을 완료한 뒤 로그인해 주세요.
+              </p>
+            ) : null}
+
+            {!isConfigured ? (
+              <p className={styles.notice} role="status">
+                Supabase 환경 변수를 먼저 설정해 주세요.
+              </p>
+            ) : null}
+
+            <form action={isSignup ? signUp : signIn} className={styles.form}>
+              <label className={styles.field}>
+                <span>이메일</span>
+                <span className={styles.inputShell}>
+                  <Mail aria-hidden="true" size={19} strokeWidth={1.7} />
+                  <input
+                    autoComplete="email"
+                    name="email"
+                    placeholder="you@example.com"
+                    required
+                    type="email"
+                  />
+                </span>
+              </label>
+
+              <PasswordField isSignup={isSignup} />
+
+              <AuthSubmitButton
+                isConfigured={isConfigured}
+                isSignup={isSignup}
+              />
+            </form>
+
+            <div className={styles.switchRow}>
+              <span>
+                {isSignup ? '이미 보관함이 있나요?' : '비디오룸이 처음인가요?'}
+              </span>
+              <Link href={isSignup ? '/' : '/?mode=signup'}>
+                {isSignup ? '로그인' : '계정 만들기'}
+              </Link>
+            </div>
+          </div>
+
+          <footer className={styles.footer}>
+            <span className={styles.help}>
+              <Headphones aria-hidden="true" size={18} />
+              도움이 필요하신가요?
+            </span>
+            <span>© VIDEO ROOM</span>
+          </footer>
         </div>
-      </main>
-    </div>
+      </section>
+    </main>
   );
 }
