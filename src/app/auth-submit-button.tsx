@@ -15,13 +15,10 @@ export function AuthSubmitButton({
   isSignup,
 }: AuthSubmitButtonProps) {
   const { pending } = useFormStatus();
-  const label = pending
-    ? isSignup
-      ? '가입하는 중...'
-      : '로그인 중...'
-    : isSignup
-      ? '가입하기'
-      : '로그인';
+  const labels = isSignup
+    ? { idle: '가입하기', pending: '가입하는 중...' }
+    : { idle: '로그인', pending: '로그인 중...' };
+  const label = pending ? labels.pending : labels.idle;
 
   return (
     <button
