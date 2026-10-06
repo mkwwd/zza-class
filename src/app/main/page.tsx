@@ -10,7 +10,9 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 
-import { isAdmin as checkIsAdmin } from '@/lib/auth/access';
+import { isAdmin } from '@/lib/auth/access';
+import { getUserProfile } from '@/lib/auth/server';
+import { groupBy } from '@/lib/collections';
 import {
   getCourseGenreLabels,
   getPublicCoursePlayback,
@@ -101,26 +103,27 @@ function CoverCase({ card }: { card: VideoRoomCard }) {
   );
 }
 
-function ReleaseCard({ card }: { card: VideoRoomCard }) {
-  const visual =
-    card.visualKind === 'cover' && card.thumbnailUrl ? (
-      <CoverCase card={card} />
-    ) : (
-      <VhsTape card={card} />
-    );
+function CardArtwork({ card }: { card: VideoRoomCard }) {
+  return card.visualKind === 'cover' && card.thumbnailUrl ? (
+    <CoverCase card={card} />
+  ) : (
+    <VhsTape card={card} />
+  );
+}
 
+function ReleaseCard({ card }: { card: VideoRoomCard }) {
   return card.href ? (
     <Link
       className={styles.releaseCard}
       href={card.href}
       aria-label={`${card.title} 보기`}>
-      {visual}
+      <CardArtwork card={card} />
     </Link>
   ) : (
     <div
       className={`${styles.releaseCard} ${styles.disabled}`}
       aria-label={`${card.title} 준비중`}>
-      {visual}
+      <CardArtwork card={card} />
     </div>
   );
 }
@@ -163,11 +166,7 @@ function FeaturedCard({ card }: { card: VideoRoomCard }) {
   return (
     <section className={styles.featured} aria-label="오늘의 추천 비디오">
       <div className={styles.featuredMedia}>
-        {card.visualKind === 'cover' && card.thumbnailUrl ? (
-          <CoverCase card={card} />
-        ) : (
-          <VhsTape card={card} />
-        )}
+        <CardArtwork card={card} />
       </div>
       <div className={styles.featuredCopy}>
         <span className={styles.featuredLabel}>FEATURED</span>
@@ -202,21 +201,21 @@ export default async function MainPage({ searchParams }: MainPageProps) {
 
   if (!user) redirect('/');
 
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('email, role')
-    .eq('id', user.id)
-    .maybeSingle();
-  const { data: enrollments } = await supabase
-    .from('enrollments')
-    .select('course_id, created_at')
-    .eq('user_id', user.id)
-    .order('created_at', { ascending: false });
-  const { data: courses, error: coursesError } = await supabase
-    .from('courses')
-    .select('id, title, description, thumbnail_url')
-    .eq('status', 'published')
-    .order('created_at', { ascending: false });
+  const [profile, enrollmentResult, courseResult] = await Promise.all([
+    getUserProfile(supabase, user.id),
+    supabase
+      .from('enrollments')
+      .select('course_id')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false }),
+    supabase
+      .from('courses')
+      .select('id, title, description, thumbnail_url')
+      .eq('status', 'published')
+      .order('created_at', { ascending: false }),
+  ]);
+  const { data: enrollments } = enrollmentResult;
+  const { data: courses, error: coursesError } = courseResult;
 
   if (coursesError) {
     throw new Error('Failed to load published videos.');
@@ -250,23 +249,11 @@ export default async function MainPage({ searchParams }: MainPageProps) {
   const enrolledCourseIds = new Set(
     (enrollments ?? []).map((item) => item.course_id),
   );
-  const lessonsByCourseId = new Map<string, LessonRow[]>();
-  for (const lesson of lessons) {
-    const courseLessons = lessonsByCourseId.get(lesson.course_id) ?? [];
-    courseLessons.push(lesson);
-    lessonsByCourseId.set(lesson.course_id, courseLessons);
-  }
-
-  const genreLabelsByCourseId = new Map<string, string[]>();
-  for (const courseGenre of courseGenres) {
-    const [genreLabel] = getCourseGenreLabels([courseGenre]);
-
-    if (!genreLabel) continue;
-
-    const labels = genreLabelsByCourseId.get(courseGenre.course_id) ?? [];
-    labels.push(genreLabel);
-    genreLabelsByCourseId.set(courseGenre.course_id, labels);
-  }
+  const lessonsByCourseId = groupBy(lessons, (lesson) => lesson.course_id);
+  const genresByCourseId = groupBy(
+    courseGenres,
+    (courseGenre) => courseGenre.course_id,
+  );
 
   const keyword = searchQuery.toLowerCase();
   const visibleCourses = ((courses ?? []) as CourseRow[]).filter(
@@ -288,13 +275,15 @@ export default async function MainPage({ searchParams }: MainPageProps) {
         lessonCount: courseLessons.length,
         hasPlayableVideo: playback.hasPlayableVideo,
         isEnrolled: enrolledCourseIds.has(course.id),
-        genreLabels: genreLabelsByCourseId.get(course.id) ?? [],
+        genreLabels: getCourseGenreLabels(
+          genresByCourseId.get(course.id) ?? [],
+        ),
         runtimeSeconds: playback.runtimeSeconds,
       };
     }),
   );
   const featuredCard = pickFeaturedVideoRoomCard(cards);
-  const isAdmin = checkIsAdmin(profile?.role === 'admin' ? 'admin' : 'user');
+  const userIsAdmin = isAdmin(profile.role);
 
   return (
     <main className={styles.page}>
@@ -314,7 +303,7 @@ export default async function MainPage({ searchParams }: MainPageProps) {
               <span>{label}</span>
             </Link>
           ))}
-          {isAdmin ? (
+          {userIsAdmin ? (
             <Link href="/admin">
               <Clapperboard aria-hidden="true" size={21} strokeWidth={1.7} />
               <span>편집실</span>

@@ -1,7 +1,7 @@
 'use client';
 
 import type { CSSProperties } from 'react';
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 
 import Link from 'next/link';
 
@@ -41,13 +41,9 @@ export function VideoShelfTheater({
   );
   const selectedTape = tapes[selectedIndex];
 
-  const spotlight = useMemo(() => {
-    if (!tapes.length) {
-      return 18;
-    }
-
-    return 10 + selectedIndex * (76 / Math.max(1, tapes.length - 1));
-  }, [selectedIndex, tapes.length]);
+  const spotlight = tapes.length
+    ? 10 + selectedIndex * (76 / Math.max(1, tapes.length - 1))
+    : 18;
 
   if (!tapes.length) {
     return (

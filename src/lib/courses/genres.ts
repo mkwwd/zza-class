@@ -1,4 +1,4 @@
-export const GENRE_SLUGS = [
+const GENRE_SLUGS = [
   'drama',
   'romance',
   'thriller',

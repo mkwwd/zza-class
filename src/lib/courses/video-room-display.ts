@@ -1,8 +1,7 @@
 import { getTapeDisplay, type TapeTone } from './course-display';
-import { formatRuntimeLabel } from './course-runtime';
 import { formatGenreLabels } from './genres';
 
-export type VideoRoomSourceCourse = {
+type VideoRoomSourceCourse = {
   id: string;
   title: string;
   description: string | null;
@@ -52,9 +51,7 @@ export function buildVideoRoomCards(
       genreLabel: formatGenreLabels(course.genreLabels),
       href: isPlayable ? `/courses/${course.id}` : undefined,
       isPlayable,
-      runtimeLabel: isPlayable
-        ? formatRuntimeLabel(course.runtimeSeconds)
-        : '편성 대기',
+      runtimeLabel: tape.runtimeLabel,
       shelfLabel: tape.shelfLabel,
       slotLabel: `VR-${String(index + 1).padStart(3, '0')}`,
       statusLabel: isPlayable ? '대여 가능' : '준비중',
@@ -82,7 +79,7 @@ export function buildVideoRoomCards(
       description: '새로운 숏드라마 테이프가 곧 들어옵니다.',
       genreLabel: 'COMING SOON',
       isPlayable: false,
-      runtimeLabel: '편성 대기',
+      runtimeLabel: tape.runtimeLabel,
       shelfLabel: '입고 예정',
       slotLabel: `VR-${String(slotIndex + 1).padStart(3, '0')}`,
       statusLabel: '준비중',

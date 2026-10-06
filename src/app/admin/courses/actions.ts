@@ -5,6 +5,42 @@ import { redirect } from 'next/navigation';
 
 import { requireAdmin } from '@/lib/auth/server';
 import { parseCourseForm, parseLessonForm } from '@/lib/courses/course-form';
+import type { CourseFormInput, LessonFormInput } from '@/lib/courses/types';
+
+function getCourseEditPath(courseId: string, error?: string) {
+  const path = `/admin/courses/${courseId}/edit`;
+  return error ? `${path}?error=${error}` : path;
+}
+
+function getCourseValues(course: CourseFormInput) {
+  return {
+    description: course.description,
+    staff_note: course.staffNote || null,
+    status: course.status,
+    thumbnail_image_id: course.thumbnailImageId || null,
+    thumbnail_url: course.thumbnailUrl || null,
+    title: course.title,
+  };
+}
+
+function getLessonValues(lesson: LessonFormInput) {
+  return {
+    duration_seconds: lesson.durationSeconds,
+    has_video: Boolean(lesson.videoUrl),
+    sort_order: lesson.sortOrder,
+    title: lesson.title,
+  };
+}
+
+function revalidateCatalog() {
+  revalidatePath('/admin');
+  revalidatePath('/main');
+}
+
+function revalidateCourseEditor(courseId: string) {
+  revalidatePath(getCourseEditPath(courseId));
+  revalidatePath(`/courses/${courseId}`);
+}
 
 export async function createCourse(formData: FormData) {
   const { supabase, user } = await requireAdmin();
@@ -18,12 +54,7 @@ export async function createCourse(formData: FormData) {
     .from('courses')
     .insert({
       created_by: user.id,
-      description: parsed.value.description,
-      staff_note: parsed.value.staffNote || null,
-      status: parsed.value.status,
-      thumbnail_image_id: parsed.value.thumbnailImageId || null,
-      thumbnail_url: parsed.value.thumbnailUrl || null,
-      title: parsed.value.title,
+      ...getCourseValues(parsed.value),
     })
     .select('id')
     .single();
@@ -50,9 +81,8 @@ export async function createCourse(formData: FormData) {
     redirect('/admin/courses/new?error=invalid-course');
   }
 
-  revalidatePath('/admin');
-  revalidatePath('/main');
-  redirect(`/admin/courses/${data.id}/edit`);
+  revalidateCatalog();
+  redirect(getCourseEditPath(data.id));
 }
 
 export async function updateCourse(courseId: string, formData: FormData) {
@@ -60,24 +90,19 @@ export async function updateCourse(courseId: string, formData: FormData) {
   const parsed = parseCourseForm(formData);
 
   if (!parsed.ok) {
-    redirect(`/admin/courses/${courseId}/edit?error=invalid-course`);
+    redirect(getCourseEditPath(courseId, 'invalid-course'));
   }
 
   const { error: courseError } = await supabase
     .from('courses')
     .update({
-      description: parsed.value.description,
-      staff_note: parsed.value.staffNote || null,
-      status: parsed.value.status,
-      thumbnail_image_id: parsed.value.thumbnailImageId || null,
-      thumbnail_url: parsed.value.thumbnailUrl || null,
-      title: parsed.value.title,
+      ...getCourseValues(parsed.value),
       updated_at: new Date().toISOString(),
     })
     .eq('id', courseId);
 
   if (courseError) {
-    redirect(`/admin/courses/${courseId}/edit?error=invalid-course`);
+    redirect(getCourseEditPath(courseId, 'invalid-course'));
   }
 
   const { error: genreError } = await supabase.rpc('replace_course_genres', {
@@ -86,12 +111,11 @@ export async function updateCourse(courseId: string, formData: FormData) {
   });
 
   if (genreError) {
-    redirect(`/admin/courses/${courseId}/edit?error=invalid-course`);
+    redirect(getCourseEditPath(courseId, 'invalid-course'));
   }
 
-  revalidatePath('/admin');
-  revalidatePath('/main');
-  revalidatePath(`/admin/courses/${courseId}/edit`);
+  revalidateCatalog();
+  revalidatePath(getCourseEditPath(courseId));
 }
 
 export async function deleteCourse(courseId: string) {
@@ -108,23 +132,20 @@ export async function addLesson(courseId: string, formData: FormData) {
   const parsed = parseLessonForm(formData);
 
   if (!parsed.ok) {
-    redirect(`/admin/courses/${courseId}/edit?error=invalid-lesson`);
+    redirect(getCourseEditPath(courseId, 'invalid-lesson'));
   }
 
   const { data: lesson, error: lessonError } = await supabase
     .from('lessons')
     .insert({
       course_id: courseId,
-      duration_seconds: parsed.value.durationSeconds,
-      has_video: Boolean(parsed.value.videoUrl),
-      sort_order: parsed.value.sortOrder,
-      title: parsed.value.title,
+      ...getLessonValues(parsed.value),
     })
     .select('id')
     .single();
 
   if (lessonError || !lesson) {
-    redirect(`/admin/courses/${courseId}/edit?error=invalid-lesson`);
+    redirect(getCourseEditPath(courseId, 'invalid-lesson'));
   }
 
   const { error: contentError } = await supabase
@@ -143,14 +164,13 @@ export async function addLesson(courseId: string, formData: FormData) {
       .eq('course_id', courseId);
 
     if (cleanupError) {
-      redirect(`/admin/courses/${courseId}/edit?error=lesson-cleanup-failed`);
+      redirect(getCourseEditPath(courseId, 'lesson-cleanup-failed'));
     }
 
-    redirect(`/admin/courses/${courseId}/edit?error=invalid-lesson`);
+    redirect(getCourseEditPath(courseId, 'invalid-lesson'));
   }
 
-  revalidatePath(`/admin/courses/${courseId}/edit`);
-  revalidatePath(`/courses/${courseId}`);
+  revalidateCourseEditor(courseId);
 }
 
 export async function updateLesson(
@@ -162,7 +182,7 @@ export async function updateLesson(
   const parsed = parseLessonForm(formData);
 
   if (!parsed.ok) {
-    redirect(`/admin/courses/${courseId}/edit?error=invalid-lesson`);
+    redirect(getCourseEditPath(courseId, 'invalid-lesson'));
   }
 
   const { data: previousLesson, error: previousLessonError } = await supabase
@@ -173,23 +193,20 @@ export async function updateLesson(
     .maybeSingle();
 
   if (previousLessonError || !previousLesson) {
-    redirect(`/admin/courses/${courseId}/edit?error=invalid-lesson`);
+    redirect(getCourseEditPath(courseId, 'invalid-lesson'));
   }
 
   const { error: lessonError } = await supabase
     .from('lessons')
     .update({
-      duration_seconds: parsed.value.durationSeconds,
-      has_video: Boolean(parsed.value.videoUrl),
-      sort_order: parsed.value.sortOrder,
-      title: parsed.value.title,
+      ...getLessonValues(parsed.value),
       updated_at: new Date().toISOString(),
     })
     .eq('id', lessonId)
     .eq('course_id', courseId);
 
   if (lessonError) {
-    redirect(`/admin/courses/${courseId}/edit?error=invalid-lesson`);
+    redirect(getCourseEditPath(courseId, 'invalid-lesson'));
   }
 
   const { error: contentError } = await supabase.from('lesson_contents').upsert(
@@ -210,10 +227,10 @@ export async function updateLesson(
       .eq('course_id', courseId);
 
     if (rollbackError) {
-      redirect(`/admin/courses/${courseId}/edit?error=lesson-cleanup-failed`);
+      redirect(getCourseEditPath(courseId, 'lesson-cleanup-failed'));
     }
 
-    redirect(`/admin/courses/${courseId}/edit?error=invalid-lesson`);
+    redirect(getCourseEditPath(courseId, 'invalid-lesson'));
   }
 
   revalidatePath(`/admin/courses/${courseId}/edit`);
@@ -230,9 +247,8 @@ export async function deleteLesson(courseId: string, lessonId: string) {
     .eq('course_id', courseId);
 
   if (error) {
-    redirect(`/admin/courses/${courseId}/edit?error=invalid-lesson`);
+    redirect(getCourseEditPath(courseId, 'invalid-lesson'));
   }
 
-  revalidatePath(`/admin/courses/${courseId}/edit`);
-  revalidatePath(`/courses/${courseId}`);
+  revalidateCourseEditor(courseId);
 }

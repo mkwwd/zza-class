@@ -1,6 +1,8 @@
 import { parseGenreSlugs } from './genres';
 import type { CourseFormInput, CourseStatus, LessonFormInput } from './types';
 
+type ParseResult<T> = { ok: true; value: T } | { ok: false; error: string };
+
 function readString(formData: FormData, key: string) {
   return String(formData.get(key) ?? '').trim();
 }
@@ -11,7 +13,7 @@ function readStatus(formData: FormData): CourseStatus {
 
 export function parseCourseForm(
   formData: FormData,
-): { ok: true; value: CourseFormInput } | { ok: false; error: string } {
+): ParseResult<CourseFormInput> {
   const title = readString(formData, 'title');
 
   if (!title) {
@@ -40,7 +42,7 @@ export function parseCourseForm(
 
 export function parseLessonForm(
   formData: FormData,
-): { ok: true; value: LessonFormInput } | { ok: false; error: string } {
+): ParseResult<LessonFormInput> {
   const title = readString(formData, 'title');
 
   if (!title) {

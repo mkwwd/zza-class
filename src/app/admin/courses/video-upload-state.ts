@@ -1,4 +1,4 @@
-export type VideoPair = {
+type VideoPair = {
   durationSeconds: number | null;
   url: string;
 };
@@ -9,7 +9,7 @@ type PendingReplacement = {
   uploadedUrl: string | null;
 };
 
-export type VideoUploadState = {
+type VideoUploadState = {
   committed: VideoPair;
   pendingReplacement: PendingReplacement | null;
   previewUrl: string;
@@ -65,6 +65,21 @@ function commitReadyReplacement(state: VideoUploadState): VideoUploadState {
   };
 }
 
+function updatePendingReplacement(
+  state: VideoUploadState,
+  update: Partial<PendingReplacement>,
+) {
+  if (!state.pendingReplacement) return state;
+
+  return commitReadyReplacement({
+    ...state,
+    pendingReplacement: {
+      ...state.pendingReplacement,
+      ...update,
+    },
+  });
+}
+
 export function reduceVideoUploadState(
   state: VideoUploadState,
   event: VideoUploadEvent,
@@ -91,38 +106,20 @@ export function reduceVideoUploadState(
         };
       }
 
-      return commitReadyReplacement({
-        ...state,
-        pendingReplacement: {
-          ...state.pendingReplacement,
-          durationSeconds: event.durationSeconds,
-          isMetadataResolved: true,
-        },
+      return updatePendingReplacement(state, {
+        durationSeconds: event.durationSeconds,
+        isMetadataResolved: true,
       });
     }
-    case 'metadata-failed': {
-      if (!state.pendingReplacement) return state;
-
-      return commitReadyReplacement({
-        ...state,
-        pendingReplacement: {
-          ...state.pendingReplacement,
-          durationSeconds: null,
-          isMetadataResolved: true,
-        },
+    case 'metadata-failed':
+      return updatePendingReplacement(state, {
+        durationSeconds: null,
+        isMetadataResolved: true,
       });
-    }
-    case 'upload-succeeded': {
-      if (!state.pendingReplacement) return state;
-
-      return commitReadyReplacement({
-        ...state,
-        pendingReplacement: {
-          ...state.pendingReplacement,
-          uploadedUrl: event.url,
-        },
+    case 'upload-succeeded':
+      return updatePendingReplacement(state, {
+        uploadedUrl: event.url,
       });
-    }
     case 'upload-failed':
       return {
         ...state,

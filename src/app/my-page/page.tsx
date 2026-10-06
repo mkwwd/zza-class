@@ -5,6 +5,7 @@ import styles from '@/app/video-room-pages.module.css';
 import { VideoRoomShell } from '@/components/video-room/VideoRoomShell';
 import { StaffCat, VideoCase } from '@/components/video-room/VideoRoomVisuals';
 import { getUserProfile, requireUser } from '@/lib/auth/server';
+import { groupBy } from '@/lib/collections';
 import { partitionMyBagTitles } from '@/lib/courses/video-room-pages';
 
 type CourseRow = {
@@ -17,11 +18,11 @@ type CourseRow = {
 type LessonRow = {
   id: string;
   course_id: string;
-  sort_order: number;
-  title: string;
 };
 
 type BagTitle = CourseRow & {
+  continueHref: string;
+  episodeCount: number;
   lessonIds: string[];
 };
 
@@ -32,7 +33,7 @@ export default async function MyPage() {
   const profile = await getUserProfile(supabase, user.id);
   const { data: enrollments } = await supabase
     .from('enrollments')
-    .select('course_id, created_at')
+    .select('course_id')
     .eq('user_id', user.id)
     .order('created_at', { ascending: false });
   const courseIds = (enrollments ?? []).map((item) => item.course_id);
@@ -45,7 +46,7 @@ export default async function MyPage() {
   const { data: lessons } = courseIds.length
     ? await supabase
         .from('lessons')
-        .select('id, course_id, title, sort_order')
+        .select('id, course_id')
         .in('course_id', courseIds)
         .order('sort_order', { ascending: true })
     : { data: [] };
@@ -62,30 +63,31 @@ export default async function MyPage() {
     (progress ?? []).map((item) => item.lesson_id),
   );
   const lessonRows = (lessons ?? []) as LessonRow[];
-  const titleRows: BagTitle[] = ((courses ?? []) as CourseRow[]).map(
-    (course) => ({
-      ...course,
-      lessonIds: lessonRows
-        .filter((lesson) => lesson.course_id === course.id)
-        .map((lesson) => lesson.id),
-    }),
+  const lessonsByCourseId = groupBy(lessonRows, (lesson) => lesson.course_id);
+  const courseById = new Map(
+    ((courses ?? []) as CourseRow[]).map((course) => [course.id, course]),
   );
-  const orderedTitles = courseIds
-    .map((courseId) => titleRows.find((title) => title.id === courseId))
-    .filter((title): title is BagTitle => Boolean(title));
-  const sections = partitionMyBagTitles(orderedTitles, completedLessonIds);
+  const orderedTitles = courseIds.flatMap((courseId): BagTitle[] => {
+    const course = courseById.get(courseId);
+    if (!course) return [];
 
-  function getContinueHref(courseId: string) {
-    const courseLessons = lessonRows.filter(
-      (lesson) => lesson.course_id === courseId,
-    );
+    const courseLessons = lessonsByCourseId.get(courseId) ?? [];
     const nextLesson =
       courseLessons.find((lesson) => !completedLessonIds.has(lesson.id)) ??
       courseLessons[0];
-    return nextLesson
-      ? `/courses/${courseId}/lessons/${nextLesson.id}`
-      : `/courses/${courseId}`;
-  }
+
+    return [
+      {
+        ...course,
+        continueHref: nextLesson
+          ? `/courses/${courseId}/lessons/${nextLesson.id}`
+          : `/courses/${courseId}`,
+        episodeCount: courseLessons.length,
+        lessonIds: courseLessons.map((lesson) => lesson.id),
+      },
+    ];
+  });
+  const sections = partitionMyBagTitles(orderedTitles, completedLessonIds);
 
   return (
     <VideoRoomShell
@@ -106,16 +108,12 @@ export default async function MyPage() {
       <main className={styles.myPageContent}>
         <BagSection
           emptyMessage="아직 대여 중인 작품이 없어요."
-          getContinueHref={getContinueHref}
-          lessons={lessonRows}
           title="대여 중"
           titles={sections.rented}
           variant="rented"
         />
         <BagSection
           emptyMessage="끝까지 본 작품이 이곳에 차곡차곡 쌓여요."
-          getContinueHref={getContinueHref}
-          lessons={lessonRows}
           title="시청 완료"
           titles={sections.completed}
           variant="completed"
@@ -139,15 +137,11 @@ export default async function MyPage() {
 
 function BagSection({
   emptyMessage,
-  getContinueHref,
-  lessons,
   title,
   titles,
   variant,
 }: {
   emptyMessage: string;
-  getContinueHref: (courseId: string) => string;
-  lessons: LessonRow[];
   title: string;
   titles: BagTitle[];
   variant: 'rented' | 'completed';
@@ -165,41 +159,38 @@ function BagSection({
           className={
             variant === 'rented' ? styles.rentedGrid : styles.completedGrid
           }>
-          {titles.map((course) => {
-            const episodeCount = lessons.filter(
-              (lesson) => lesson.course_id === course.id,
-            ).length;
-            return (
-              <article className={styles.bagCard} key={course.id}>
-                <VideoCase
-                  runtime={episodeCount ? `${episodeCount}화` : '편성 대기'}
-                  thumbnailUrl={course.thumbnail_url}
-                  title={course.title}
-                />
-                <div className={styles.bagCardCopy}>
-                  <h3>{course.title}</h3>
-                  <span>
-                    <Clock3 aria-hidden="true" size={14} /> {episodeCount}{' '}
-                    EPISODES
-                  </span>
-                  <p>{course.description || '작품 소개가 준비 중입니다.'}</p>
-                  <div>
-                    <Link
-                      className={styles.cardPrimary}
-                      href={getContinueHref(course.id)}>
-                      <Play aria-hidden="true" fill="currentColor" size={15} />
-                      {variant === 'rented' ? '이어보기' : '다시 보기'}
-                    </Link>
-                    <Link
-                      className={styles.cardSecondary}
-                      href={`/courses/${course.id}`}>
-                      상세정보
-                    </Link>
-                  </div>
+          {titles.map((course) => (
+            <article className={styles.bagCard} key={course.id}>
+              <VideoCase
+                runtime={
+                  course.episodeCount ? `${course.episodeCount}화` : '편성 대기'
+                }
+                thumbnailUrl={course.thumbnail_url}
+                title={course.title}
+              />
+              <div className={styles.bagCardCopy}>
+                <h3>{course.title}</h3>
+                <span>
+                  <Clock3 aria-hidden="true" size={14} /> {course.episodeCount}{' '}
+                  EPISODES
+                </span>
+                <p>{course.description || '작품 소개가 준비 중입니다.'}</p>
+                <div>
+                  <Link
+                    className={styles.cardPrimary}
+                    href={course.continueHref}>
+                    <Play aria-hidden="true" fill="currentColor" size={15} />
+                    {variant === 'rented' ? '이어보기' : '다시 보기'}
+                  </Link>
+                  <Link
+                    className={styles.cardSecondary}
+                    href={`/courses/${course.id}`}>
+                    상세정보
+                  </Link>
                 </div>
-              </article>
-            );
-          })}
+              </div>
+            </article>
+          ))}
         </div>
       ) : (
         <div className={styles.bagEmpty}>
