@@ -1,4 +1,4 @@
-export type VideoPair = {
+type VideoPair = {
   durationSeconds: number | null;
   url: string;
 };
@@ -9,7 +9,7 @@ type PendingReplacement = {
   uploadedUrl: string | null;
 };
 
-export type VideoUploadState = {
+type VideoUploadState = {
   committed: VideoPair;
   pendingReplacement: PendingReplacement | null;
   previewUrl: string;

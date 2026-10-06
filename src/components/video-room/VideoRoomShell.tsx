@@ -8,7 +8,7 @@ import { logout } from '@/app/actions';
 import styles from './video-room-shell.module.css';
 import { StaffCat } from './VideoRoomVisuals';
 
-export type VideoRoomNavigationKey =
+type VideoRoomNavigationKey =
   | 'home'
   | 'catalog'
   | 'my-page'

@@ -6,7 +6,7 @@ import { canManageCourses, type Role } from './access';
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 
-export type Profile = {
+type Profile = {
   email: string | null;
   role: Role;
 };
