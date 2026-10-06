@@ -18,8 +18,6 @@ type CourseRow = {
 type LessonRow = {
   id: string;
   course_id: string;
-  sort_order: number;
-  title: string;
 };
 
 type BagTitle = CourseRow & {
@@ -35,7 +33,7 @@ export default async function MyPage() {
   const profile = await getUserProfile(supabase, user.id);
   const { data: enrollments } = await supabase
     .from('enrollments')
-    .select('course_id, created_at')
+    .select('course_id')
     .eq('user_id', user.id)
     .order('created_at', { ascending: false });
   const courseIds = (enrollments ?? []).map((item) => item.course_id);
@@ -48,7 +46,7 @@ export default async function MyPage() {
   const { data: lessons } = courseIds.length
     ? await supabase
         .from('lessons')
-        .select('id, course_id, title, sort_order')
+        .select('id, course_id')
         .in('course_id', courseIds)
         .order('sort_order', { ascending: true })
     : { data: [] };

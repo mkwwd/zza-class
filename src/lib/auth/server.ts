@@ -7,7 +7,6 @@ import { canManageCourses, type Role } from './access';
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 
 type Profile = {
-  email: string | null;
   role: Role;
 };
 
@@ -34,12 +33,11 @@ export async function getUserProfile(
 ): Promise<Profile> {
   const { data: profile } = await supabase
     .from('profiles')
-    .select('email, role')
+    .select('role')
     .eq('id', userId)
     .maybeSingle();
 
   return {
-    email: profile?.email ?? null,
     role: profile?.role === 'admin' ? 'admin' : 'user',
   };
 }

@@ -205,7 +205,7 @@ export default async function MainPage({ searchParams }: MainPageProps) {
     getUserProfile(supabase, user.id),
     supabase
       .from('enrollments')
-      .select('course_id, created_at')
+      .select('course_id')
       .eq('user_id', user.id)
       .order('created_at', { ascending: false }),
     supabase

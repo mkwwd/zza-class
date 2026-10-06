@@ -37,7 +37,7 @@ export default async function NewCoursePage({
   }));
 
   return (
-    <VideoRoomShell activeItem="upload" mode="staff" showStaffCat={false}>
+    <VideoRoomShell activeItem="upload" mode="staff">
       <header className={styles.formHeader}>
         <Link href="/admin">
           <ArrowLeft aria-hidden="true" size={18} /> 인벤토리

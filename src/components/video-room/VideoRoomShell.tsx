@@ -12,11 +12,9 @@ type VideoRoomNavigationKey =
   | 'home'
   | 'catalog'
   | 'my-page'
-  | 'favorites'
   | 'history'
   | 'inventory'
-  | 'upload'
-  | 'settings';
+  | 'upload';
 
 type VideoRoomShellProps = {
   activeItem: VideoRoomNavigationKey;
@@ -62,7 +60,7 @@ export function VideoRoomShell({
               aria-current={activeItem === key ? 'page' : undefined}
               className={activeItem === key ? styles.active : undefined}
               href={href}
-              key={`${key}-${label}`}>
+              key={key}>
               <Icon aria-hidden="true" size={21} strokeWidth={1.65} />
               <span>{label}</span>
             </Link>
@@ -83,7 +81,7 @@ export function VideoRoomShell({
             <div className={styles.catBubble}>
               보고 싶은 이야기를 천천히 골라보세요.
             </div>
-            <StaffCat className={styles.cat} priority={false} />
+            <StaffCat className={styles.cat} />
             <strong>VIDEO CLUB</strong>
             <span>{`MY BAG · ${bagCount}`}</span>
           </div>
