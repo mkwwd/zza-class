@@ -35,6 +35,7 @@ export function parseCourseForm(
       status: readStatus(formData),
       thumbnailUrl: readString(formData, 'thumbnailUrl'),
       thumbnailImageId: readString(formData, 'thumbnailImageId'),
+      previewVideoObjectKey: readString(formData, 'previewVideoObjectKey'),
       genreSlugs: genres.value,
     },
   };
@@ -66,6 +67,7 @@ export function parseLessonForm(
       title,
       content: readString(formData, 'content'),
       videoUrl: readString(formData, 'videoUrl'),
+      videoObjectKey: readString(formData, 'videoObjectKey'),
       sortOrder: Number.isFinite(sortOrder) ? sortOrder : 0,
       durationSeconds,
     },

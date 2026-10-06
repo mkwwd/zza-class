@@ -22,11 +22,11 @@ type MediaUploaderProps = {
   initialObjectKey?: string | null;
   initialDurationSeconds?: number | null;
   initialUrl?: string | null;
-  kind: 'thumbnail' | 'video';
+  kind: 'preview' | 'thumbnail' | 'video';
   label: string;
   objectKeyName?: string;
-  durationName?: string;
-  urlName: string;
+  durationName?: string | null;
+  urlName?: string | null;
 };
 
 const uploadCopy = {
@@ -42,6 +42,12 @@ const uploadCopy = {
     emptyLabel: '등록된 영상이 없어요.',
     formats: 'MP4 · WEBM',
   },
+  preview: {
+    accept: 'video/mp4,video/webm',
+    buttonLabel: '미리보기 선택',
+    emptyLabel: '별도 미리보기가 없어요.',
+    formats: 'MP4 · WEBM · 선택',
+  },
 } as const;
 
 type ThumbnailUploaderProps = {
@@ -55,11 +61,14 @@ type ThumbnailUploaderProps = {
 
 type VideoUploaderProps = {
   description: string;
-  durationName?: string;
+  durationName?: string | null;
   initialDurationSeconds?: number | null;
+  initialVideoObjectKey?: string | null;
   initialVideoUrl?: string | null;
   label: string;
-  urlName?: string;
+  objectKeyName?: string;
+  uploadKind?: 'preview' | 'video';
+  urlName?: string | null;
 };
 
 export function ThumbnailUploader({
@@ -87,8 +96,11 @@ export function VideoUploader({
   description,
   durationName = 'durationSeconds',
   initialDurationSeconds = null,
+  initialVideoObjectKey = '',
   initialVideoUrl = '',
   label,
+  objectKeyName = 'videoObjectKey',
+  uploadKind = 'video',
   urlName = 'videoUrl',
 }: VideoUploaderProps) {
   return (
@@ -96,9 +108,11 @@ export function VideoUploader({
       description={description}
       durationName={durationName}
       initialDurationSeconds={initialDurationSeconds}
+      initialObjectKey={initialVideoObjectKey}
       initialUrl={initialVideoUrl}
-      kind="video"
+      kind={uploadKind}
       label={label}
+      objectKeyName={objectKeyName}
       urlName={urlName}
     />
   );
@@ -116,7 +130,7 @@ function MediaUploader({
   urlName,
 }: MediaUploaderProps) {
   const copy = uploadCopy[kind];
-  const isVideo = kind === 'video';
+  const isVideo = kind !== 'thumbnail';
   const fileInputRef = useRef<HTMLInputElement>(null);
   const uploaderRef = useRef<HTMLDivElement>(null);
   const [objectKey, setObjectKey] = useState(initialObjectKey ?? '');
@@ -200,7 +214,7 @@ function MediaUploader({
         !presignedUploadResponse.ok ||
         !presignedUploadPayload.uploadUrl ||
         !presignedUploadPayload.objectKey ||
-        !presignedUploadPayload.publicUrl
+        (!isVideo && !presignedUploadPayload.publicUrl)
       ) {
         throw new Error(
           presignedUploadPayload.error ?? '업로드 URL을 만들지 못했어요.',
@@ -221,13 +235,14 @@ function MediaUploader({
       }
 
       if (isVideo) {
+        setObjectKey(presignedUploadPayload.objectKey);
         dispatchVideo({
           type: 'upload-succeeded',
-          url: presignedUploadPayload.publicUrl,
+          url: '',
         });
       } else {
         setObjectKey(presignedUploadPayload.objectKey);
-        setUrl(presignedUploadPayload.publicUrl);
+        setUrl(presignedUploadPayload.publicUrl ?? '');
       }
       setMessage('업로드 완료. 저장 버튼을 눌러 반영해 주세요.');
     } catch (error) {
@@ -249,7 +264,9 @@ function MediaUploader({
       aria-busy={isSubmissionBlocked}
       className={styles.uploader}
       ref={uploaderRef}>
-      <input name={urlName} readOnly type="hidden" value={committedUrl} />
+      {urlName ? (
+        <input name={urlName} readOnly type="hidden" value={committedUrl} />
+      ) : null}
       {durationName ? (
         <input
           name={durationName}
@@ -333,7 +350,13 @@ function MediaUploader({
         </div>
       ) : null}
 
-      {committedUrl ? <p className={styles.url}>{committedUrl}</p> : null}
+      {committedUrl && !isVideo ? (
+        <p className={styles.url}>{committedUrl}</p>
+      ) : null}
+
+      {isVideo && objectKey && !previewUrl ? (
+        <p className={styles.message}>비공개 영상이 등록되어 있어요.</p>
+      ) : null}
 
       {message ? <p className={styles.message}>{message}</p> : null}
       {durationMessage ? (

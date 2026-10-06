@@ -9,6 +9,7 @@ export type CourseFormInput = {
   status: CourseStatus;
   thumbnailUrl: string;
   thumbnailImageId: string;
+  previewVideoObjectKey: string;
   genreSlugs: GenreSlug[];
 };
 
@@ -16,6 +17,7 @@ export type LessonFormInput = {
   title: string;
   content: string;
   videoUrl: string;
+  videoObjectKey: string;
   sortOrder: number;
   durationSeconds: number | null;
 };

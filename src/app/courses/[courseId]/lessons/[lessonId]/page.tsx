@@ -13,8 +13,10 @@ import styles from '@/app/video-room-pages.module.css';
 import { VideoRoomShell } from '@/components/video-room/VideoRoomShell';
 import { VhsTape } from '@/components/video-room/VideoRoomVisuals';
 import { canViewLessonContent } from '@/lib/auth/access';
-import { getUserProfile, requireUser } from '@/lib/auth/server';
+import { getUserProfile } from '@/lib/auth/server';
+import { getPrivateVideoPlaybackUrl } from '@/lib/cloudflare/r2';
 import { getEpisodeNavigation } from '@/lib/courses/video-room-pages';
+import { createClient, hasSupabaseEnv } from '@/lib/supabase/server';
 
 import { markLessonComplete } from '../../../actions';
 
@@ -25,24 +27,14 @@ type LessonPageProps = {
 export const dynamic = 'force-dynamic';
 
 export default async function LessonPage({ params }: LessonPageProps) {
-  const { courseId, lessonId } = await params;
-  const { supabase, user } = await requireUser();
-  const profile = await getUserProfile(supabase, user.id);
-  const { data: enrollment } = await supabase
-    .from('enrollments')
-    .select('id')
-    .eq('course_id', courseId)
-    .eq('user_id', user.id)
-    .maybeSingle();
+  if (!hasSupabaseEnv()) redirect('/');
 
-  if (
-    !canViewLessonContent({
-      role: profile.role,
-      isEnrolled: Boolean(enrollment),
-    })
-  ) {
-    redirect(`/courses/${courseId}`);
-  }
+  const { courseId, lessonId } = await params;
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const profile = user ? await getUserProfile(supabase, user.id) : null;
 
   const [{ data: course }, { data: lessons }, { count: bagCount }] =
     await Promise.all([
@@ -53,38 +45,88 @@ export default async function LessonPage({ params }: LessonPageProps) {
         .maybeSingle(),
       supabase
         .from('lessons')
-        .select('id, title, sort_order, thumbnail_url')
+        .select('id, title, sort_order, thumbnail_url, has_video')
         .eq('course_id', courseId)
         .order('sort_order', { ascending: true }),
-      supabase
-        .from('enrollments')
-        .select('id', { count: 'exact', head: true })
-        .eq('user_id', user.id),
+      user
+        ? supabase
+            .from('enrollments')
+            .select('id', { count: 'exact', head: true })
+            .eq('user_id', user.id)
+        : Promise.resolve({ count: 0 }),
     ]);
 
   const lesson = lessons?.find((item) => item.id === lessonId);
   if (!course || !lesson) notFound();
 
-  const [{ data: lessonContent }, { data: progress }] = await Promise.all([
-    supabase
-      .from('lesson_contents')
-      .select('content, video_url')
-      .eq('lesson_id', lesson.id)
-      .maybeSingle(),
-    supabase
-      .from('lesson_progress')
-      .select('completed_at')
-      .eq('lesson_id', lesson.id)
-      .eq('user_id', user.id)
-      .maybeSingle(),
-  ]);
+  const { data: rental } = user
+    ? await supabase
+        .from('lesson_rentals')
+        .select('id')
+        .eq('lesson_id', lesson.id)
+        .eq('user_id', user.id)
+        .maybeSingle()
+    : { data: null };
+
+  if (
+    !canViewLessonContent({
+      isRented: Boolean(rental),
+      role: profile?.role,
+      sortOrder: lesson.sort_order,
+    })
+  ) {
+    redirect(`/courses/${courseId}`);
+  }
+
+  const lessonIds = (lessons ?? []).map((item) => item.id);
+  const [{ data: lessonContent }, { data: progress }, { data: rentals }] =
+    await Promise.all([
+      supabase
+        .from('lesson_contents')
+        .select('content, video_object_key, video_url')
+        .eq('lesson_id', lesson.id)
+        .maybeSingle(),
+      user
+        ? supabase
+            .from('lesson_progress')
+            .select('completed_at')
+            .eq('lesson_id', lesson.id)
+            .eq('user_id', user.id)
+            .maybeSingle()
+        : Promise.resolve({ data: null }),
+      user && lessonIds.length
+        ? supabase
+            .from('lesson_rentals')
+            .select('lesson_id')
+            .eq('user_id', user.id)
+            .in('lesson_id', lessonIds)
+        : Promise.resolve({ data: [] }),
+    ]);
+  const rentedLessonIds = new Set(
+    (rentals ?? []).map((item) => item.lesson_id),
+  );
+  const videoSource = lessonContent?.video_object_key
+    ? await getPrivateVideoPlaybackUrl(lessonContent.video_object_key)
+    : lessonContent?.video_url || null;
   const navigation = getEpisodeNavigation(lessons ?? [], lesson.id);
+  const canOpenLesson = (targetId: string | null) => {
+    const target = lessons?.find((item) => item.id === targetId);
+
+    return Boolean(
+      target?.has_video &&
+      canViewLessonContent({
+        isRented: rentedLessonIds.has(target.id),
+        role: profile?.role,
+        sortOrder: target.sort_order,
+      }),
+    );
+  };
 
   return (
     <VideoRoomShell
       activeItem="history"
       bagCount={bagCount ?? 0}
-      isAdmin={profile.role === 'admin'}
+      isAdmin={profile?.role === 'admin'}
       showStaffCat={false}>
       <header className={styles.utilityBar}>
         <Link className={styles.backLink} href={`/courses/${courseId}`}>
@@ -113,13 +155,13 @@ export default async function LessonPage({ params }: LessonPageProps) {
         <section className={styles.crtTelevision} aria-label="비디오 재생기">
           <div className={styles.crtBody}>
             <div className={styles.crtScreen}>
-              {lessonContent?.video_url ? (
+              {videoSource ? (
                 <video
                   controls
                   poster={
                     lesson.thumbnail_url || course.thumbnail_url || undefined
                   }
-                  src={lessonContent.video_url}
+                  src={videoSource}
                 />
               ) : (
                 <div className={styles.playerEmpty}>
@@ -146,7 +188,7 @@ export default async function LessonPage({ params }: LessonPageProps) {
         </section>
 
         <div className={styles.playerControlsRow}>
-          {navigation.previousId ? (
+          {canOpenLesson(navigation.previousId) ? (
             <Link
               href={`/courses/${courseId}/lessons/${navigation.previousId}`}>
               <ChevronLeft aria-hidden="true" size={18} /> 이전 회차
@@ -154,13 +196,17 @@ export default async function LessonPage({ params }: LessonPageProps) {
           ) : (
             <span />
           )}
-          <form action={markLessonComplete.bind(null, courseId, lesson.id)}>
-            <button disabled={Boolean(progress)} type="submit">
-              <Check aria-hidden="true" size={17} />
-              {progress ? '시청 완료됨' : '시청 완료'}
-            </button>
-          </form>
-          {navigation.nextId ? (
+          {user ? (
+            <form action={markLessonComplete.bind(null, courseId, lesson.id)}>
+              <button disabled={Boolean(progress)} type="submit">
+                <Check aria-hidden="true" size={17} />
+                {progress ? '시청 완료됨' : '시청 완료'}
+              </button>
+            </form>
+          ) : (
+            <Link href="/">로그인</Link>
+          )}
+          {canOpenLesson(navigation.nextId) ? (
             <Link href={`/courses/${courseId}/lessons/${navigation.nextId}`}>
               다음 회차 <ChevronRight aria-hidden="true" size={18} />
             </Link>
@@ -182,24 +228,44 @@ export default async function LessonPage({ params }: LessonPageProps) {
 
               return (
                 <li key={item.id}>
-                  <Link
-                    aria-current={item.id === lesson.id ? 'page' : undefined}
-                    href={`/courses/${courseId}/lessons/${item.id}`}>
-                    <div className={styles.episodeVisual}>
-                      <VhsTape
-                        code={episodeCode}
-                        label={`${item.sort_order}회`}
-                        orientation="horizontal"
-                      />
+                  {canOpenLesson(item.id) ? (
+                    <Link
+                      aria-current={item.id === lesson.id ? 'page' : undefined}
+                      href={`/courses/${courseId}/lessons/${item.id}`}>
+                      <div className={styles.episodeVisual}>
+                        <VhsTape
+                          code={episodeCode}
+                          label={`${item.sort_order}회`}
+                          orientation="horizontal"
+                        />
+                      </div>
+                      <div className={styles.episodeCopy}>
+                        <span>{episodeCode}</span>
+                        <h3>{item.title}</h3>
+                        <small>
+                          <Clock3 aria-hidden="true" size={14} /> SHORT VIDEO
+                        </small>
+                      </div>
+                    </Link>
+                  ) : (
+                    <div aria-label={`${item.sort_order}화, 유료 대여 준비 중`}>
+                      <div className={styles.episodeVisual}>
+                        <VhsTape
+                          code={episodeCode}
+                          label={`${item.sort_order}회`}
+                          orientation="horizontal"
+                        />
+                      </div>
+                      <div className={styles.episodeCopy}>
+                        <span>{episodeCode}</span>
+                        <h3>{item.title}</h3>
+                        <small>
+                          <Clock3 aria-hidden="true" size={14} /> 유료 대여 준비
+                          중
+                        </small>
+                      </div>
                     </div>
-                    <div className={styles.episodeCopy}>
-                      <span>{episodeCode}</span>
-                      <h3>{item.title}</h3>
-                      <small>
-                        <Clock3 aria-hidden="true" size={14} /> SHORT VIDEO
-                      </small>
-                    </div>
-                  </Link>
+                  )}
                 </li>
               );
             })}

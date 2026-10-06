@@ -51,6 +51,7 @@ create table if not exists public.courses (
   status public.course_status not null default 'draft',
   thumbnail_url text,
   thumbnail_image_id text,
+  preview_video_object_key text,
   created_by uuid references auth.users(id),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
@@ -83,8 +84,19 @@ create table if not exists public.lesson_contents (
   lesson_id uuid primary key references public.lessons(id) on delete cascade,
   content text,
   video_url text,
+  video_object_key text,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
+);
+
+create table if not exists public.lesson_rentals (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  lesson_id uuid not null references public.lessons(id) on delete cascade,
+  rental_kind text not null default 'paid'
+    check (rental_kind in ('paid', 'legacy')),
+  rented_at timestamptz not null default now(),
+  unique (user_id, lesson_id)
 );
 
 create table if not exists public.enrollments (
@@ -106,7 +118,11 @@ create table if not exists public.lesson_progress (
 alter table public.courses
   add column if not exists thumbnail_url text,
   add column if not exists thumbnail_image_id text,
-  add column if not exists staff_note text;
+  add column if not exists staff_note text,
+  add column if not exists preview_video_object_key text;
+
+alter table public.lesson_contents
+  add column if not exists video_object_key text;
 
 alter table public.lessons
   add column if not exists thumbnail_url text,
@@ -145,8 +161,18 @@ set has_video = exists (
   select 1
   from public.lesson_contents as content
   where content.lesson_id = lesson.id
-    and nullif(trim(content.video_url), '') is not null
+    and (
+      nullif(trim(content.video_object_key), '') is not null
+      or nullif(trim(content.video_url), '') is not null
+    )
 );
+
+insert into public.lesson_rentals (user_id, lesson_id, rental_kind, rented_at)
+select enrollment.user_id, lesson.id, 'legacy', enrollment.created_at
+from public.enrollments as enrollment
+join public.lessons as lesson on lesson.course_id = enrollment.course_id
+where lesson.sort_order > 1
+on conflict (user_id, lesson_id) do nothing;
 
 alter table public.profiles enable row level security;
 alter table public.courses enable row level security;
@@ -154,6 +180,7 @@ alter table public.lessons enable row level security;
 alter table public.lesson_contents enable row level security;
 alter table public.enrollments enable row level security;
 alter table public.lesson_progress enable row level security;
+alter table public.lesson_rentals enable row level security;
 alter table public.genres enable row level security;
 alter table public.course_genres enable row level security;
 
@@ -167,11 +194,13 @@ grant insert, update, delete on public.courses to authenticated;
 grant select on public.lessons to anon, authenticated;
 grant insert, update, delete on public.lessons to authenticated;
 
+grant select on public.lesson_contents to anon;
 grant select, insert, update, delete on public.lesson_contents to authenticated;
 
 grant select, insert on public.enrollments to authenticated;
 
 grant select, insert, update on public.lesson_progress to authenticated;
+grant select on public.lesson_rentals to authenticated;
 
 grant select on public.genres to anon, authenticated;
 grant select on public.course_genres to anon, authenticated;
@@ -232,6 +261,36 @@ as $$
       and enrollments.course_id = is_enrolled.target_course_id
   );
 $$;
+
+create or replace function public.can_view_lesson(target_lesson_id uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select exists (
+    select 1
+    from public.lessons
+    join public.courses on courses.id = lessons.course_id
+    where lessons.id = target_lesson_id
+      and courses.status = 'published'
+      and lessons.sort_order = 1
+  ) or exists (
+    select 1
+    from public.profiles
+    where profiles.id = (select auth.uid())
+      and profiles.role = 'admin'
+  ) or exists (
+    select 1
+    from public.lesson_rentals
+    where lesson_rentals.user_id = (select auth.uid())
+      and lesson_rentals.lesson_id = target_lesson_id
+  );
+$$;
+
+revoke all on function public.can_view_lesson(uuid) from public;
+grant execute on function public.can_view_lesson(uuid) to anon, authenticated;
 
 create or replace function public.replace_course_genres(
   target_course_id uuid,
@@ -397,22 +456,14 @@ using (public.is_admin((select auth.uid())))
 with check (public.is_admin((select auth.uid())));
 
 drop policy if exists "Enrolled users can view lesson contents" on public.lesson_contents;
+drop policy if exists "Viewers can access available lesson contents" on public.lesson_contents;
 drop policy if exists "Admins can manage lesson contents" on public.lesson_contents;
 
-create policy "Enrolled users can view lesson contents"
+create policy "Viewers can access available lesson contents"
 on public.lesson_contents
 for select
-to authenticated
-using (
-  public.is_enrolled(
-    (select auth.uid()),
-    (
-      select lessons.course_id
-      from public.lessons
-      where lessons.id = lesson_contents.lesson_id
-    )
-  )
-);
+to anon, authenticated
+using (public.can_view_lesson(lesson_id));
 
 create policy "Admins can manage lesson contents"
 on public.lesson_contents
@@ -431,22 +482,23 @@ for select
 to authenticated
 using ((select auth.uid()) = user_id);
 
-create policy "Users can enroll themselves"
-on public.enrollments
-for insert
-to authenticated
-with check (
-  (select auth.uid()) = user_id
-  and exists (
-    select 1
-    from public.courses
-    where courses.id = enrollments.course_id
-      and courses.status = 'published'
-  )
-);
-
 create policy "Admins can view all enrollments"
 on public.enrollments
+for select
+to authenticated
+using (public.is_admin((select auth.uid())));
+
+drop policy if exists "Users can view own lesson rentals" on public.lesson_rentals;
+drop policy if exists "Admins can view all lesson rentals" on public.lesson_rentals;
+
+create policy "Users can view own lesson rentals"
+on public.lesson_rentals
+for select
+to authenticated
+using ((select auth.uid()) = user_id);
+
+create policy "Admins can view all lesson rentals"
+on public.lesson_rentals
 for select
 to authenticated
 using (public.is_admin((select auth.uid())));
@@ -468,12 +520,7 @@ for insert
 to authenticated
 with check (
   (select auth.uid()) = user_id
-  and exists (
-    select 1
-    from public.lessons
-    where lessons.id = lesson_progress.lesson_id
-      and public.is_enrolled((select auth.uid()), lessons.course_id)
-  )
+  and public.can_view_lesson(lesson_id)
 );
 
 create policy "Users can update own lesson progress"

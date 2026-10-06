@@ -14,6 +14,7 @@ describe('course form parsing', () => {
       'https://media.example.com/thumbnails/course-123.png',
     );
     formData.set('thumbnailImageId', 'course-image-id');
+    formData.set('previewVideoObjectKey', 'previews/course-123.mp4');
     formData.append('genres', 'drama');
     formData.append('genres', 'fantasy');
 
@@ -26,6 +27,7 @@ describe('course form parsing', () => {
         status: 'published',
         thumbnailUrl: 'https://media.example.com/thumbnails/course-123.png',
         thumbnailImageId: 'course-image-id',
+        previewVideoObjectKey: 'previews/course-123.mp4',
         genreSlugs: ['drama', 'fantasy'],
       },
     });
@@ -55,6 +57,7 @@ describe('course form parsing', () => {
         status: 'draft',
         thumbnailUrl: '',
         thumbnailImageId: '',
+        previewVideoObjectKey: '',
         genreSlugs: [],
       },
     });
@@ -85,6 +88,7 @@ describe('lesson form parsing', () => {
     formData.set('title', 'What is React?');
     formData.set('content', 'React is a UI library.');
     formData.set('videoUrl', 'https://example.com/video');
+    formData.set('videoObjectKey', 'videos/lesson-123.mp4');
     formData.set('sortOrder', '2');
     formData.set('durationSeconds', '146');
     formData.set(
@@ -99,6 +103,7 @@ describe('lesson form parsing', () => {
         title: 'What is React?',
         content: 'React is a UI library.',
         videoUrl: 'https://example.com/video',
+        videoObjectKey: 'videos/lesson-123.mp4',
         sortOrder: 2,
         durationSeconds: 146,
       },
@@ -126,6 +131,7 @@ describe('lesson form parsing', () => {
         title: 'Intro',
         content: '',
         videoUrl: '',
+        videoObjectKey: '',
         sortOrder: 0,
         durationSeconds: null,
       },
@@ -143,6 +149,7 @@ describe('lesson form parsing', () => {
         title: 'Intro',
         content: '',
         videoUrl: '',
+        videoObjectKey: '',
         sortOrder: 0,
         durationSeconds: null,
       },

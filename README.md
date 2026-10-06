@@ -25,15 +25,17 @@ CLOUDFLARE_R2_ACCESS_KEY_ID=
 CLOUDFLARE_R2_SECRET_ACCESS_KEY=
 CLOUDFLARE_R2_BUCKET_NAME=
 CLOUDFLARE_R2_PUBLIC_BASE_URL=
+CLOUDFLARE_R2_VIDEO_BUCKET_NAME=
 ```
 
 ## Cloudflare R2 설정
 
-1. Cloudflare Dashboard에서 R2 bucket을 만듭니다.
+1. Cloudflare Dashboard에서 공개 썸네일 bucket과 비공개 영상 bucket을 각각 만듭니다.
 2. R2 API Token에서 Object Read & Write 권한의 Access Key ID와 Secret Access Key를 발급합니다.
-3. bucket의 Public Development URL을 켜거나 custom domain을 연결합니다.
-4. public URL을 `CLOUDFLARE_R2_PUBLIC_BASE_URL`에 넣습니다.
-5. 브라우저 업로드가 되도록 bucket CORS에 `GET`, `PUT`과 `Content-Type` 헤더를 허용합니다.
+3. 썸네일 bucket에만 Public Development URL 또는 custom domain을 연결합니다.
+4. 썸네일 public URL을 `CLOUDFLARE_R2_PUBLIC_BASE_URL`에 넣습니다.
+5. 영상 bucket 이름을 `CLOUDFLARE_R2_VIDEO_BUCKET_NAME`에 넣고 Public Development URL과 custom domain은 모두 비활성화합니다.
+6. 브라우저 업로드가 되도록 두 bucket의 CORS에 `PUT`과 `Content-Type` 헤더를 허용합니다. 영상 재생은 만료되는 signed URL을 사용하므로 영상 bucket에는 `GET`도 허용합니다.
 
 개발 중 CORS 예시:
 

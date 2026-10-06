@@ -41,6 +41,20 @@ describe('VideoUploader', () => {
     expect(markup).toContain('value="146"');
   });
 
+  it('submits private object keys without rendering a permanent video URL', () => {
+    const markup = renderToStaticMarkup(
+      createElement(VideoUploader, {
+        description: '회차 영상',
+        initialVideoObjectKey: 'videos/lesson-1.mp4',
+        label: '회차 영상',
+      }),
+    );
+
+    expect(markup).toContain('name="videoObjectKey"');
+    expect(markup).toContain('value="videos/lesson-1.mp4"');
+    expect(markup).not.toContain('https://media.example.com');
+  });
+
   it('commits a replacement URL and duration only after both are ready', () => {
     const initial = createVideoUploadState(
       'https://media.example.com/original.mp4',

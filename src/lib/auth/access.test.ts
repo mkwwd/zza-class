@@ -21,15 +21,35 @@ describe('access helpers', () => {
     expect(canManageCourses(undefined)).toBe(false);
   });
 
-  it('allows lesson content for admins or enrolled users only', () => {
-    expect(canViewLessonContent({ role: 'admin', isEnrolled: false })).toBe(
-      true,
-    );
-    expect(canViewLessonContent({ role: 'user', isEnrolled: true })).toBe(true);
-    expect(canViewLessonContent({ role: 'user', isEnrolled: false })).toBe(
-      false,
-    );
-    expect(canViewLessonContent({ role: null, isEnrolled: false })).toBe(false);
+  it('keeps the first episode public and later episodes rental-only', () => {
+    expect(
+      canViewLessonContent({
+        isRented: false,
+        role: null,
+        sortOrder: 1,
+      }),
+    ).toBe(true);
+    expect(
+      canViewLessonContent({
+        isRented: false,
+        role: 'user',
+        sortOrder: 2,
+      }),
+    ).toBe(false);
+    expect(
+      canViewLessonContent({
+        isRented: true,
+        role: 'user',
+        sortOrder: 2,
+      }),
+    ).toBe(true);
+    expect(
+      canViewLessonContent({
+        isRented: false,
+        role: 'admin',
+        sortOrder: 3,
+      }),
+    ).toBe(true);
   });
 
   it('redirects missing users to login', () => {

@@ -9,13 +9,15 @@ export function canManageCourses(role: Role | null | undefined) {
 }
 
 export function canViewLessonContent({
+  isRented,
   role,
-  isEnrolled,
+  sortOrder,
 }: {
+  isRented: boolean;
   role?: Role | null;
-  isEnrolled: boolean;
+  sortOrder: number;
 }) {
-  return isAdmin(role) || isEnrolled;
+  return sortOrder === 1 || isAdmin(role) || isRented;
 }
 
 export function getAuthenticatedRedirect(userId?: string | null) {

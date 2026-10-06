@@ -7,6 +7,7 @@ export type PublicLessonMetadata = {
   id: string;
   duration_seconds: number | null;
   has_video: boolean;
+  sort_order?: number;
 };
 
 export type PublicCourseGenreRow = {
@@ -26,6 +27,26 @@ type PublicCoursePlayback =
       runtimeLabel: string;
       runtimeSeconds: number | null;
     };
+
+export function getCoursePreviewHref({
+  courseId,
+  hasUploadedPreview,
+  lessons,
+}: {
+  courseId: string;
+  hasUploadedPreview: boolean;
+  lessons: PublicLessonMetadata[];
+}) {
+  if (hasUploadedPreview) return `/courses/${courseId}/preview`;
+
+  const firstEpisode = lessons.find(
+    (lesson) => lesson.sort_order === 1 && lesson.has_video,
+  );
+
+  return firstEpisode
+    ? `/courses/${courseId}/lessons/${firstEpisode.id}`
+    : null;
+}
 
 export function getPublicCoursePlayback(
   lessons: PublicLessonMetadata[],
@@ -55,14 +76,14 @@ export function getPublicCoursePlayback(
 
 export function getLessonPlaybackHref({
   courseId,
-  isEnrolled,
+  isRented,
   lesson,
 }: {
   courseId: string;
-  isEnrolled: boolean;
+  isRented: boolean;
   lesson: PublicLessonMetadata;
 }): string | null {
-  return isEnrolled && lesson.has_video
+  return lesson.has_video && (lesson.sort_order === 1 || isRented)
     ? `/courses/${courseId}/lessons/${lesson.id}`
     : null;
 }

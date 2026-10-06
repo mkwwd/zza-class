@@ -15,6 +15,7 @@ function getCourseEditPath(courseId: string, error?: string) {
 function getCourseValues(course: CourseFormInput) {
   return {
     description: course.description,
+    preview_video_object_key: course.previewVideoObjectKey || null,
     staff_note: course.staffNote || null,
     status: course.status,
     thumbnail_image_id: course.thumbnailImageId || null,
@@ -26,7 +27,7 @@ function getCourseValues(course: CourseFormInput) {
 function getLessonValues(lesson: LessonFormInput) {
   return {
     duration_seconds: lesson.durationSeconds,
-    has_video: Boolean(lesson.videoUrl),
+    has_video: Boolean(lesson.videoObjectKey || lesson.videoUrl),
     sort_order: lesson.sortOrder,
     title: lesson.title,
   };
@@ -153,6 +154,7 @@ export async function addLesson(courseId: string, formData: FormData) {
     .insert({
       content: parsed.value.content,
       lesson_id: lesson.id,
+      video_object_key: parsed.value.videoObjectKey || null,
       video_url: parsed.value.videoUrl,
     });
 
@@ -214,6 +216,7 @@ export async function updateLesson(
       content: parsed.value.content,
       lesson_id: lessonId,
       updated_at: new Date().toISOString(),
+      video_object_key: parsed.value.videoObjectKey || null,
       video_url: parsed.value.videoUrl,
     },
     { onConflict: 'lesson_id' },

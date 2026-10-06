@@ -1,7 +1,11 @@
-import { PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
+import {
+  GetObjectCommand,
+  PutObjectCommand,
+  S3Client,
+} from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 
-export type R2UploadKind = 'thumbnail' | 'video';
+export type R2UploadKind = 'preview' | 'thumbnail' | 'video';
 
 type R2UploadPresetInput = {
   contentType: string;
@@ -24,7 +28,7 @@ type R2Config = {
   accessKeyId: string;
   secretAccessKey: string;
   bucketName: string;
-  publicBaseUrl: string;
+  publicBaseUrl?: string;
 };
 
 export function getR2UploadPreset({ contentType, kind }: R2UploadPresetInput) {
@@ -44,7 +48,7 @@ export function getR2UploadPreset({ contentType, kind }: R2UploadPresetInput) {
   }
 
   return {
-    directory: 'videos',
+    directory: kind === 'preview' ? 'previews' : 'videos',
     maxSizeBytes: 1024 * 1024 * 1024,
   };
 }
@@ -54,7 +58,12 @@ export function buildR2ObjectKey({
   kind,
   objectId,
 }: R2ObjectKeyInput) {
-  const preset = kind === 'thumbnail' ? 'thumbnails' : 'videos';
+  const preset =
+    kind === 'thumbnail'
+      ? 'thumbnails'
+      : kind === 'preview'
+        ? 'previews'
+        : 'videos';
   const extension = readExtension(fileName);
   const baseName = extension
     ? fileName.slice(0, -(extension.length + 1))
@@ -79,7 +88,7 @@ export function buildR2PublicUrl({
     .join('/')}`;
 }
 
-export function readR2Config(): R2Config | null {
+export function readR2Config(kind: R2UploadKind): R2Config | null {
   const accountId = process.env.CLOUDFLARE_ACCOUNT_ID;
   const accessKeyId =
     process.env.CLOUDFLARE_R2_ACCESS_KEY_ID ?? process.env.R2_ACCESS_KEY_ID;
@@ -87,7 +96,9 @@ export function readR2Config(): R2Config | null {
     process.env.CLOUDFLARE_R2_SECRET_ACCESS_KEY ??
     process.env.R2_SECRET_ACCESS_KEY;
   const bucketName =
-    process.env.CLOUDFLARE_R2_BUCKET_NAME ?? process.env.R2_BUCKET_NAME;
+    kind === 'thumbnail'
+      ? (process.env.CLOUDFLARE_R2_BUCKET_NAME ?? process.env.R2_BUCKET_NAME)
+      : process.env.CLOUDFLARE_R2_VIDEO_BUCKET_NAME;
   const publicBaseUrl =
     process.env.CLOUDFLARE_R2_PUBLIC_BASE_URL ?? process.env.R2_PUBLIC_BASE_URL;
 
@@ -96,7 +107,7 @@ export function readR2Config(): R2Config | null {
     !accessKeyId ||
     !secretAccessKey ||
     !bucketName ||
-    !publicBaseUrl
+    (kind === 'thumbnail' && !publicBaseUrl)
   ) {
     return null;
   }
@@ -149,12 +160,38 @@ export async function createR2PutObjectUpload({
 
   return {
     objectKey,
-    publicUrl: buildR2PublicUrl({
-      objectKey,
-      publicBaseUrl: r2Config.publicBaseUrl,
-    }),
+    publicUrl:
+      kind === 'thumbnail' && r2Config.publicBaseUrl
+        ? buildR2PublicUrl({
+            objectKey,
+            publicBaseUrl: r2Config.publicBaseUrl,
+          })
+        : null,
     uploadUrl,
   };
+}
+
+export async function createR2GetObjectUrl({
+  objectKey,
+  r2Config,
+}: {
+  objectKey: string;
+  r2Config: R2Config;
+}) {
+  return getSignedUrl(
+    createR2Client(r2Config),
+    new GetObjectCommand({
+      Bucket: r2Config.bucketName,
+      Key: objectKey,
+    }),
+    { expiresIn: 60 * 30 },
+  );
+}
+
+export async function getPrivateVideoPlaybackUrl(objectKey: string) {
+  const r2Config = readR2Config('video');
+
+  return r2Config ? createR2GetObjectUrl({ objectKey, r2Config }) : null;
 }
 
 function readExtension(fileName: string) {
