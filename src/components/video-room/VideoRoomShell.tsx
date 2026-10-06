@@ -9,12 +9,7 @@ import styles from './video-room-shell.module.css';
 import { StaffCat } from './VideoRoomVisuals';
 
 type VideoRoomNavigationKey =
-  | 'home'
-  | 'catalog'
-  | 'my-page'
-  | 'history'
-  | 'inventory'
-  | 'upload';
+  'home' | 'catalog' | 'my-page' | 'history' | 'inventory' | 'upload';
 
 type VideoRoomShellProps = {
   activeItem: VideoRoomNavigationKey;

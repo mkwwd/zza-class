@@ -1,7 +1,4 @@
-export function groupBy<T, K>(
-  items: T[],
-  getKey: (item: T) => K,
-): Map<K, T[]> {
+export function groupBy<T, K>(items: T[], getKey: (item: T) => K): Map<K, T[]> {
   const groups = new Map<K, T[]>();
 
   for (const item of items) {

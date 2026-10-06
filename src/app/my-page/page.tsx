@@ -63,10 +63,7 @@ export default async function MyPage() {
     (progress ?? []).map((item) => item.lesson_id),
   );
   const lessonRows = (lessons ?? []) as LessonRow[];
-  const lessonsByCourseId = groupBy(
-    lessonRows,
-    (lesson) => lesson.course_id,
-  );
+  const lessonsByCourseId = groupBy(lessonRows, (lesson) => lesson.course_id);
   const courseById = new Map(
     ((courses ?? []) as CourseRow[]).map((course) => [course.id, course]),
   );
@@ -90,10 +87,7 @@ export default async function MyPage() {
       },
     ];
   });
-  const sections = partitionMyBagTitles(
-    orderedTitles,
-    completedLessonIds,
-  );
+  const sections = partitionMyBagTitles(orderedTitles, completedLessonIds);
 
   return (
     <VideoRoomShell
@@ -166,39 +160,37 @@ function BagSection({
             variant === 'rented' ? styles.rentedGrid : styles.completedGrid
           }>
           {titles.map((course) => (
-              <article className={styles.bagCard} key={course.id}>
-                <VideoCase
-                  runtime={
-                    course.episodeCount
-                      ? `${course.episodeCount}화`
-                      : '편성 대기'
-                  }
-                  thumbnailUrl={course.thumbnail_url}
-                  title={course.title}
-                />
-                <div className={styles.bagCardCopy}>
-                  <h3>{course.title}</h3>
-                  <span>
-                    <Clock3 aria-hidden="true" size={14} />{' '}
-                    {course.episodeCount} EPISODES
-                  </span>
-                  <p>{course.description || '작품 소개가 준비 중입니다.'}</p>
-                  <div>
-                    <Link
-                      className={styles.cardPrimary}
-                      href={course.continueHref}>
-                      <Play aria-hidden="true" fill="currentColor" size={15} />
-                      {variant === 'rented' ? '이어보기' : '다시 보기'}
-                    </Link>
-                    <Link
-                      className={styles.cardSecondary}
-                      href={`/courses/${course.id}`}>
-                      상세정보
-                    </Link>
-                  </div>
+            <article className={styles.bagCard} key={course.id}>
+              <VideoCase
+                runtime={
+                  course.episodeCount ? `${course.episodeCount}화` : '편성 대기'
+                }
+                thumbnailUrl={course.thumbnail_url}
+                title={course.title}
+              />
+              <div className={styles.bagCardCopy}>
+                <h3>{course.title}</h3>
+                <span>
+                  <Clock3 aria-hidden="true" size={14} /> {course.episodeCount}{' '}
+                  EPISODES
+                </span>
+                <p>{course.description || '작품 소개가 준비 중입니다.'}</p>
+                <div>
+                  <Link
+                    className={styles.cardPrimary}
+                    href={course.continueHref}>
+                    <Play aria-hidden="true" fill="currentColor" size={15} />
+                    {variant === 'rented' ? '이어보기' : '다시 보기'}
+                  </Link>
+                  <Link
+                    className={styles.cardSecondary}
+                    href={`/courses/${course.id}`}>
+                    상세정보
+                  </Link>
                 </div>
-              </article>
-            ))}
+              </div>
+            </article>
+          ))}
         </div>
       ) : (
         <div className={styles.bagEmpty}>

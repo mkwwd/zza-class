@@ -44,10 +44,7 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
     enrollments ?? [],
     (enrollment) => enrollment.course_id,
   );
-  const lessonCounts = countBy(
-    lessons ?? [],
-    (lesson) => lesson.course_id,
-  );
+  const lessonCounts = countBy(lessons ?? [], (lesson) => lesson.course_id);
 
   const allCourses = courses ?? [];
   const visibleCourses = allCourses.filter(

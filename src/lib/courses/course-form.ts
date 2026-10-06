@@ -1,9 +1,7 @@
 import { parseGenreSlugs } from './genres';
 import type { CourseFormInput, CourseStatus, LessonFormInput } from './types';
 
-type ParseResult<T> =
-  | { ok: true; value: T }
-  | { ok: false; error: string };
+type ParseResult<T> = { ok: true; value: T } | { ok: false; error: string };
 
 function readString(formData: FormData, key: string) {
   return String(formData.get(key) ?? '').trim();
