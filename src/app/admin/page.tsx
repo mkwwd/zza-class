@@ -11,6 +11,7 @@ import Link from 'next/link';
 import { VideoRoomShell } from '@/components/video-room/VideoRoomShell';
 import { VhsTape } from '@/components/video-room/VideoRoomVisuals';
 import { requireAdmin } from '@/lib/auth/server';
+import { countBy } from '@/lib/collections';
 import { formatCourseStatus } from '@/lib/courses/course-display';
 
 import styles from './admin-video-room.module.css';
@@ -39,20 +40,14 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
       supabase.from('lessons').select('course_id'),
     ]);
 
-  const enrollmentCounts = new Map<string, number>();
-  for (const enrollment of enrollments ?? []) {
-    enrollmentCounts.set(
-      enrollment.course_id,
-      (enrollmentCounts.get(enrollment.course_id) ?? 0) + 1,
-    );
-  }
-  const lessonCounts = new Map<string, number>();
-  for (const lesson of lessons ?? []) {
-    lessonCounts.set(
-      lesson.course_id,
-      (lessonCounts.get(lesson.course_id) ?? 0) + 1,
-    );
-  }
+  const enrollmentCounts = countBy(
+    enrollments ?? [],
+    (enrollment) => enrollment.course_id,
+  );
+  const lessonCounts = countBy(
+    lessons ?? [],
+    (lesson) => lesson.course_id,
+  );
 
   const allCourses = courses ?? [];
   const visibleCourses = allCourses.filter(

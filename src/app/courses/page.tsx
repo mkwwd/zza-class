@@ -1,6 +1,8 @@
 import Link from 'next/link';
 
-import { isAdmin as checkIsAdmin } from '@/lib/auth/access';
+import { isAdmin } from '@/lib/auth/access';
+import { getUserProfile } from '@/lib/auth/server';
+import { groupBy } from '@/lib/collections';
 import { getTapeDisplay } from '@/lib/courses/course-display';
 import {
   getPublicCoursePlayback,
@@ -31,13 +33,7 @@ export default async function CoursesPage() {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  const { data: profile } = user
-    ? await supabase
-        .from('profiles')
-        .select('role')
-        .eq('id', user.id)
-        .maybeSingle()
-    : { data: null };
+  const profile = user ? await getUserProfile(supabase, user.id) : null;
   const { data: courses } = await supabase
     .from('courses')
     .select('id, title, description, thumbnail_url')
@@ -63,18 +59,15 @@ export default async function CoursesPage() {
           .in('course_id', courseIds)
       : { data: [] };
 
-  const lessonsByCourseId = new Map<string, LessonRow[]>();
-  for (const lesson of (lessons ?? []) as LessonRow[]) {
-    const courseLessons = lessonsByCourseId.get(lesson.course_id) ?? [];
-    courseLessons.push(lesson);
-    lessonsByCourseId.set(lesson.course_id, courseLessons);
-  }
+  const lessonsByCourseId = groupBy(
+    (lessons ?? []) as LessonRow[],
+    (lesson) => lesson.course_id,
+  );
 
   const enrolledCourseIds = new Set(
     (enrollments ?? []).map((enrollment) => enrollment.course_id),
   );
-  const role = profile?.role === 'admin' ? 'admin' : 'user';
-  const isAdmin = checkIsAdmin(role);
+  const userIsAdmin = isAdmin(profile?.role);
   const tapes: ShelfTape[] = (courses ?? []).map((course, index) => {
     const courseLessons = lessonsByCourseId.get(course.id) ?? [];
     const playback = getPublicCoursePlayback(courseLessons);
@@ -103,7 +96,7 @@ export default async function CoursesPage() {
         userLabel={user ? '내 보관함' : '로그인'}
       />
 
-      {isAdmin ? (
+      {userIsAdmin ? (
         <section className="border-t border-[#2a211d] bg-[#0f0b0a] px-5 py-8">
           <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-4">
             <div>

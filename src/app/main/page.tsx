@@ -12,6 +12,7 @@ import { redirect } from 'next/navigation';
 
 import { isAdmin } from '@/lib/auth/access';
 import { getUserProfile } from '@/lib/auth/server';
+import { groupBy } from '@/lib/collections';
 import {
   getCourseGenreLabels,
   getPublicCoursePlayback,
@@ -61,18 +62,6 @@ const navigationItems: NavigationItem[] = [
   { href: '/main', icon: Film, label: '홈' },
   { href: '/my-page', icon: LibraryBig, label: '마이 페이지' },
 ];
-
-function groupByCourseId<T extends { course_id: string }>(items: T[]) {
-  const groups = new Map<string, T[]>();
-
-  for (const item of items) {
-    const group = groups.get(item.course_id) ?? [];
-    group.push(item);
-    groups.set(item.course_id, group);
-  }
-
-  return groups;
-}
 
 function VhsTape({
   card,
@@ -260,8 +249,11 @@ export default async function MainPage({ searchParams }: MainPageProps) {
   const enrolledCourseIds = new Set(
     (enrollments ?? []).map((item) => item.course_id),
   );
-  const lessonsByCourseId = groupByCourseId(lessons);
-  const genresByCourseId = groupByCourseId(courseGenres);
+  const lessonsByCourseId = groupBy(lessons, (lesson) => lesson.course_id);
+  const genresByCourseId = groupBy(
+    courseGenres,
+    (courseGenre) => courseGenre.course_id,
+  );
 
   const keyword = searchQuery.toLowerCase();
   const visibleCourses = ((courses ?? []) as CourseRow[]).filter(
