@@ -20,27 +20,31 @@ export const runtime = 'nodejs';
 export async function POST(request: Request) {
   await requireAdmin();
 
-  const r2Config = readR2Config();
-
-  if (!r2Config) {
-    return NextResponse.json(
-      {
-        error: 'Cloudflare R2 환경 변수를 설정하면 파일을 업로드할 수 있어요.',
-      },
-      { status: 503 },
-    );
-  }
-
   const body = (await request.json()) as UploadRequestBody;
   const kind = body.kind;
   const contentType = body.contentType?.trim() ?? '';
   const fileName = body.fileName?.trim() ?? '';
   const size = body.size ?? 0;
 
-  if (!kind || (kind !== 'thumbnail' && kind !== 'video') || !fileName) {
+  if (
+    !kind ||
+    (kind !== 'thumbnail' && kind !== 'video' && kind !== 'preview') ||
+    !fileName
+  ) {
     return NextResponse.json(
       { error: '업로드할 파일 정보를 확인해 주세요.' },
       { status: 400 },
+    );
+  }
+
+  const r2Config = readR2Config(kind);
+
+  if (!r2Config) {
+    return NextResponse.json(
+      {
+        error: 'Cloudflare R2 비공개 미디어 버킷 환경 변수를 설정해 주세요.',
+      },
+      { status: 503 },
     );
   }
 

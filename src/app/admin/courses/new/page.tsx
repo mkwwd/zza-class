@@ -8,7 +8,7 @@ import type { GenreOption, GenreSlug } from '@/lib/courses/genres';
 import styles from '../../admin-video-room.module.css';
 import { createCourse } from '../actions';
 import { GenreSelector } from '../genre-selector';
-import { ThumbnailUploader } from '../thumbnail-uploader';
+import { ThumbnailUploader, VideoUploader } from '../thumbnail-uploader';
 
 type NewCoursePageProps = {
   searchParams: Promise<{ error?: string }>;
@@ -66,6 +66,14 @@ export default async function NewCoursePage({
               <ThumbnailUploader
                 description="메인 선반과 상세 페이지에 보이는 작품 표지입니다."
                 label="비디오 표지"
+              />
+              <VideoUploader
+                description="등록하면 1화 대신 작품 미리보기에 사용합니다."
+                durationName={null}
+                label="별도 미리보기 영상"
+                objectKeyName="previewVideoObjectKey"
+                uploadKind="preview"
+                urlName={null}
               />
             </section>
 

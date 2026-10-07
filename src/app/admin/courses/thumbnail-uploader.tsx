@@ -21,12 +21,13 @@ type MediaUploaderProps = {
   description: string;
   initialObjectKey?: string | null;
   initialDurationSeconds?: number | null;
+  initialPreviewUrl?: string | null;
   initialUrl?: string | null;
-  kind: 'thumbnail' | 'video';
+  kind: 'preview' | 'thumbnail' | 'video';
   label: string;
   objectKeyName?: string;
-  durationName?: string;
-  urlName: string;
+  durationName?: string | null;
+  urlName?: string | null;
 };
 
 const uploadCopy = {
@@ -42,6 +43,12 @@ const uploadCopy = {
     emptyLabel: '등록된 영상이 없어요.',
     formats: 'MP4 · WEBM',
   },
+  preview: {
+    accept: 'video/mp4,video/webm',
+    buttonLabel: '미리보기 선택',
+    emptyLabel: '별도 미리보기가 없어요.',
+    formats: 'MP4 · WEBM · 선택',
+  },
 } as const;
 
 type ThumbnailUploaderProps = {
@@ -49,17 +56,21 @@ type ThumbnailUploaderProps = {
   imageIdName?: string;
   initialImageId?: string | null;
   initialImageUrl?: string | null;
+  initialPreviewUrl?: string | null;
   label: string;
   urlName?: string;
 };
 
 type VideoUploaderProps = {
   description: string;
-  durationName?: string;
+  durationName?: string | null;
   initialDurationSeconds?: number | null;
+  initialVideoObjectKey?: string | null;
   initialVideoUrl?: string | null;
   label: string;
-  urlName?: string;
+  objectKeyName?: string;
+  uploadKind?: 'preview' | 'video';
+  urlName?: string | null;
 };
 
 export function ThumbnailUploader({
@@ -67,6 +78,7 @@ export function ThumbnailUploader({
   imageIdName = 'thumbnailImageId',
   initialImageId = '',
   initialImageUrl = '',
+  initialPreviewUrl,
   label,
   urlName = 'thumbnailUrl',
 }: ThumbnailUploaderProps) {
@@ -74,6 +86,7 @@ export function ThumbnailUploader({
     <MediaUploader
       description={description}
       initialObjectKey={initialImageId}
+      initialPreviewUrl={initialPreviewUrl ?? initialImageUrl}
       initialUrl={initialImageUrl}
       kind="thumbnail"
       label={label}
@@ -87,8 +100,11 @@ export function VideoUploader({
   description,
   durationName = 'durationSeconds',
   initialDurationSeconds = null,
+  initialVideoObjectKey = '',
   initialVideoUrl = '',
   label,
+  objectKeyName = 'videoObjectKey',
+  uploadKind = 'video',
   urlName = 'videoUrl',
 }: VideoUploaderProps) {
   return (
@@ -96,9 +112,11 @@ export function VideoUploader({
       description={description}
       durationName={durationName}
       initialDurationSeconds={initialDurationSeconds}
+      initialObjectKey={initialVideoObjectKey}
       initialUrl={initialVideoUrl}
-      kind="video"
+      kind={uploadKind}
       label={label}
+      objectKeyName={objectKeyName}
       urlName={urlName}
     />
   );
@@ -109,6 +127,7 @@ function MediaUploader({
   durationName,
   initialDurationSeconds = null,
   initialObjectKey = '',
+  initialPreviewUrl,
   initialUrl = '',
   kind,
   label,
@@ -116,11 +135,14 @@ function MediaUploader({
   urlName,
 }: MediaUploaderProps) {
   const copy = uploadCopy[kind];
-  const isVideo = kind === 'video';
+  const isVideo = kind !== 'thumbnail';
   const fileInputRef = useRef<HTMLInputElement>(null);
   const uploaderRef = useRef<HTMLDivElement>(null);
   const [objectKey, setObjectKey] = useState(initialObjectKey ?? '');
   const [url, setUrl] = useState(initialUrl ?? '');
+  const [imagePreviewUrl, setImagePreviewUrl] = useState(
+    initialPreviewUrl ?? initialUrl ?? '',
+  );
   const [videoState, dispatchVideo] = useReducer(
     reduceVideoUploadState,
     createVideoUploadState(initialUrl ?? '', initialDurationSeconds),
@@ -131,15 +153,18 @@ function MediaUploader({
   const isVideoPending = isVideo && isVideoUploadPending(videoState);
   const isSubmissionBlocked = isUploading || isVideoPending;
   const committedUrl = isVideo ? videoState.committed.url : url;
-  const previewUrl = isVideo ? videoState.previewUrl : url;
+  const previewUrl = isVideo ? videoState.previewUrl : imagePreviewUrl;
 
   useEffect(
     () => () => {
       if (videoState.previewUrl.startsWith('blob:')) {
         URL.revokeObjectURL(videoState.previewUrl);
       }
+      if (imagePreviewUrl.startsWith('blob:')) {
+        URL.revokeObjectURL(imagePreviewUrl);
+      }
     },
-    [videoState.previewUrl],
+    [imagePreviewUrl, videoState.previewUrl],
   );
 
   useEffect(() => {
@@ -199,8 +224,7 @@ function MediaUploader({
       if (
         !presignedUploadResponse.ok ||
         !presignedUploadPayload.uploadUrl ||
-        !presignedUploadPayload.objectKey ||
-        !presignedUploadPayload.publicUrl
+        !presignedUploadPayload.objectKey
       ) {
         throw new Error(
           presignedUploadPayload.error ?? '업로드 URL을 만들지 못했어요.',
@@ -221,18 +245,21 @@ function MediaUploader({
       }
 
       if (isVideo) {
+        setObjectKey(presignedUploadPayload.objectKey);
         dispatchVideo({
           type: 'upload-succeeded',
-          url: presignedUploadPayload.publicUrl,
+          url: '',
         });
       } else {
         setObjectKey(presignedUploadPayload.objectKey);
-        setUrl(presignedUploadPayload.publicUrl);
+        setUrl('');
       }
       setMessage('업로드 완료. 저장 버튼을 눌러 반영해 주세요.');
     } catch (error) {
       if (isVideo) {
         dispatchVideo({ type: 'upload-failed' });
+      } else {
+        setImagePreviewUrl(initialPreviewUrl ?? initialUrl ?? '');
       }
       setMessage(
         error instanceof Error
@@ -249,7 +276,9 @@ function MediaUploader({
       aria-busy={isSubmissionBlocked}
       className={styles.uploader}
       ref={uploaderRef}>
-      <input name={urlName} readOnly type="hidden" value={committedUrl} />
+      {urlName ? (
+        <input name={urlName} readOnly type="hidden" value={committedUrl} />
+      ) : null}
       {durationName ? (
         <input
           name={durationName}
@@ -293,6 +322,8 @@ function MediaUploader({
                 type: 'replacement-selected',
               });
               setDurationMessage('');
+            } else {
+              setImagePreviewUrl(URL.createObjectURL(file));
             }
             void uploadFile(file);
           }
@@ -333,7 +364,13 @@ function MediaUploader({
         </div>
       ) : null}
 
-      {committedUrl ? <p className={styles.url}>{committedUrl}</p> : null}
+      {committedUrl && !isVideo ? (
+        <p className={styles.url}>{committedUrl}</p>
+      ) : null}
+
+      {isVideo && objectKey && !previewUrl ? (
+        <p className={styles.message}>비공개 영상이 등록되어 있어요.</p>
+      ) : null}
 
       {message ? <p className={styles.message}>{message}</p> : null}
       {durationMessage ? (

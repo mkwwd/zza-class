@@ -20,17 +20,17 @@ import {
 } from '@/components/video-room/VideoRoomVisuals';
 import { getUserProfile } from '@/lib/auth/server';
 import { getTapeDisplay } from '@/lib/courses/course-display';
+import { getCourseThumbnailSrc } from '@/lib/courses/course-thumbnail';
 import { formatGenreLabels } from '@/lib/courses/genres';
 import {
   getCourseGenreLabels,
+  getCoursePreviewHref,
   getLessonPlaybackHref,
   getPublicCoursePlayback,
   type PublicCourseGenreRow,
   type PublicLessonMetadata,
 } from '@/lib/courses/public-course-metadata';
 import { createClient, hasSupabaseEnv } from '@/lib/supabase/server';
-
-import { enrollInCourse } from '../actions';
 
 type CourseDetailPageProps = {
   params: Promise<{ courseId: string }>;
@@ -58,7 +58,9 @@ export default async function CourseDetailPage({
   const profile = user ? await getUserProfile(supabase, user.id) : null;
   const { data: course, error: courseError } = await supabase
     .from('courses')
-    .select('id, title, description, staff_note, status, thumbnail_url')
+    .select(
+      'id, title, description, staff_note, status, thumbnail_image_id, thumbnail_url, preview_video_object_key',
+    )
     .eq('id', courseId)
     .maybeSingle();
 
@@ -83,14 +85,15 @@ export default async function CourseDetailPage({
     throw new Error('Failed to load public video metadata.');
   }
 
-  const { data: enrollment } = user
-    ? await supabase
-        .from('enrollments')
-        .select('id')
-        .eq('course_id', course.id)
-        .eq('user_id', user.id)
-        .maybeSingle()
-    : { data: null };
+  const lessonIds = (lessons ?? []).map((lesson) => lesson.id);
+  const { data: rentals } =
+    user && lessonIds.length
+      ? await supabase
+          .from('lesson_rentals')
+          .select('lesson_id')
+          .eq('user_id', user.id)
+          .in('lesson_id', lessonIds)
+      : { data: [] };
   const { count: bagCount } = user
     ? await supabase
         .from('enrollments')
@@ -99,15 +102,29 @@ export default async function CourseDetailPage({
     : { count: 0 };
 
   const courseLessons = (lessons ?? []) as LessonRow[];
+  const rentedLessonIds = new Set(
+    (rentals ?? []).map((rental) => rental.lesson_id),
+  );
   const lessonCount = courseLessons.length;
   const playback = getPublicCoursePlayback(courseLessons);
+  const previewHref = getCoursePreviewHref({
+    courseId: course.id,
+    hasUploadedPreview: Boolean(course.preview_video_object_key),
+    lessons: courseLessons,
+  });
+  const hasLockedPaidEpisodes = courseLessons.some(
+    (lesson) =>
+      lesson.sort_order > 1 &&
+      lesson.has_video &&
+      !rentedLessonIds.has(lesson.id),
+  );
   const genreLabel = formatGenreLabels(
     getCourseGenreLabels((courseGenres ?? []) as PublicCourseGenreRow[]),
   );
   const tape = getTapeDisplay({
     index: 0,
     hasPlayableVideo: playback.hasPlayableVideo,
-    isEnrolled: Boolean(enrollment),
+    isEnrolled: rentedLessonIds.size > 0,
     lessonCount,
     runtimeSeconds: playback.runtimeSeconds,
   });
@@ -142,7 +159,7 @@ export default async function CourseDetailPage({
           <div className={styles.detailArtwork}>
             <VideoCase
               runtime={tape.runtimeLabel}
-              thumbnailUrl={course.thumbnail_url}
+              thumbnailUrl={getCourseThumbnailSrc(course)}
               title={course.title}
             />
           </div>
@@ -165,29 +182,19 @@ export default async function CourseDetailPage({
             </p>
 
             <div className={styles.detailButtons}>
-              {!playback.hasPlayableVideo ? (
+              {!previewHref ? (
                 <span className={styles.disabledButton}>회차 준비중</span>
-              ) : user ? (
-                enrollment ? (
-                  <Link
-                    className={styles.primaryButton}
-                    href={`/courses/${course.id}/lessons/${playback.firstPlayableLessonId}`}>
-                    <Play aria-hidden="true" fill="currentColor" size={19} />첫
-                    회차 재생
-                  </Link>
-                ) : (
-                  <form action={enrollInCourse.bind(null, course.id)}>
-                    <button className={styles.primaryButton} type="submit">
-                      <ShoppingBag aria-hidden="true" size={19} />
-                      MY BAG 담기
-                    </button>
-                  </form>
-                )
               ) : (
-                <Link className={styles.primaryButton} href="/">
-                  로그인하고 대여하기
+                <Link className={styles.primaryButton} href={previewHref}>
+                  <Play aria-hidden="true" fill="currentColor" size={19} />
+                  미리보기
                 </Link>
               )}
+              {hasLockedPaidEpisodes ? (
+                <span className={styles.disabledButton}>
+                  <ShoppingBag aria-hidden="true" size={19} /> 회차 대여 준비 중
+                </span>
+              ) : null}
               <button className={styles.secondaryButton} type="button">
                 <Heart aria-hidden="true" size={19} />
                 찜하기
@@ -197,7 +204,7 @@ export default async function CourseDetailPage({
             <div className={styles.detailHints}>
               <span>
                 <Info aria-hidden="true" size={16} />
-                보관함에서 언제든 이어볼 수 있어요.
+                1화는 미리보기로 공개되며, 이후 회차는 개별 대여합니다.
               </span>
               <button aria-label="작품 공유" type="button">
                 <Share2 aria-hidden="true" size={17} /> 공유
@@ -231,7 +238,7 @@ export default async function CourseDetailPage({
               {courseLessons.map((lesson, index) => {
                 const lessonHref = getLessonPlaybackHref({
                   courseId: course.id,
-                  isEnrolled: Boolean(enrollment),
+                  isRented: rentedLessonIds.has(lesson.id),
                   lesson,
                 });
                 const content = (
@@ -250,7 +257,13 @@ export default async function CourseDetailPage({
                       <h3>{lesson.title}</h3>
                       <small>
                         <Clock3 aria-hidden="true" size={14} />{' '}
-                        {lesson.has_video ? 'SHORT VIDEO' : '편성 대기'}
+                        {!lesson.has_video
+                          ? '편성 대기'
+                          : lesson.sort_order === 1
+                            ? '무료 미리보기'
+                            : rentedLessonIds.has(lesson.id)
+                              ? '대여 완료'
+                              : '유료 대여 준비 중'}
                       </small>
                     </div>
                   </>
@@ -264,7 +277,7 @@ export default async function CourseDetailPage({
                       <div
                         aria-label={
                           lesson.has_video
-                            ? `${index + 1}화, 대여 후 재생 가능`
+                            ? `${index + 1}화, 유료 대여 준비 중`
                             : `${index + 1}화, 영상 편성 대기`
                         }>
                         {content}

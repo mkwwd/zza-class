@@ -13,6 +13,7 @@ import { VhsTape } from '@/components/video-room/VideoRoomVisuals';
 import { requireAdmin } from '@/lib/auth/server';
 import { countBy } from '@/lib/collections';
 import { formatCourseStatus } from '@/lib/courses/course-display';
+import { getCourseThumbnailSrc } from '@/lib/courses/course-thumbnail';
 
 import styles from './admin-video-room.module.css';
 import { deleteCourse } from './courses/actions';
@@ -34,7 +35,9 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
     await Promise.all([
       supabase
         .from('courses')
-        .select('id, title, description, status, thumbnail_url, created_at')
+        .select(
+          'id, title, description, status, thumbnail_image_id, thumbnail_url, created_at',
+        )
         .order('created_at', { ascending: false }),
       supabase.from('enrollments').select('course_id'),
       supabase.from('lessons').select('course_id'),
@@ -137,12 +140,12 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
                     <td>
                       <div className={styles.titleCell}>
                         <div className={styles.inventoryThumb}>
-                          {course.thumbnail_url ? (
+                          {getCourseThumbnailSrc(course) ? (
                             <span
                               aria-label={`${course.title} 썸네일`}
                               role="img"
                               style={{
-                                backgroundImage: `url(${course.thumbnail_url})`,
+                                backgroundImage: `url(${getCourseThumbnailSrc(course)})`,
                               }}
                             />
                           ) : (

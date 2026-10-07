@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation';
 
 import { VideoRoomShell } from '@/components/video-room/VideoRoomShell';
 import { requireAdmin } from '@/lib/auth/server';
+import { getCourseThumbnailSrc } from '@/lib/courses/course-thumbnail';
 import type { GenreOption, GenreSlug } from '@/lib/courses/genres';
 import { formatLessonNumber } from '@/lib/courses/lesson-display';
 
@@ -34,7 +35,7 @@ export default async function EditCoursePage({
   const { data: course } = await supabase
     .from('courses')
     .select(
-      'id, title, description, staff_note, status, thumbnail_image_id, thumbnail_url',
+      'id, title, description, staff_note, status, thumbnail_image_id, thumbnail_url, preview_video_object_key',
     )
     .eq('id', courseId)
     .maybeSingle();
@@ -64,7 +65,7 @@ export default async function EditCoursePage({
   const { data: lessonContents } = lessonIds.length
     ? await supabase
         .from('lesson_contents')
-        .select('lesson_id, content, video_url')
+        .select('lesson_id, content, video_object_key, video_url')
         .in('lesson_id', lessonIds)
     : { data: [] };
   const contentByLessonId = new Map(
@@ -113,12 +114,24 @@ export default async function EditCoursePage({
           <form
             action={updateCourse.bind(null, course.id)}
             className={styles.courseEditorForm}>
-            <ThumbnailUploader
-              description="메인 선반과 상세 화면의 대표 이미지입니다."
-              initialImageId={course.thumbnail_image_id}
-              initialImageUrl={course.thumbnail_url}
-              label="비디오 표지"
-            />
+            <div className={styles.uploadColumn}>
+              <ThumbnailUploader
+                description="메인 선반과 상세 화면의 대표 이미지입니다."
+                initialImageId={course.thumbnail_image_id}
+                initialImageUrl={course.thumbnail_url}
+                initialPreviewUrl={getCourseThumbnailSrc(course)}
+                label="비디오 표지"
+              />
+              <VideoUploader
+                description="등록하면 1화 대신 작품 미리보기에 사용합니다."
+                durationName={null}
+                initialVideoObjectKey={course.preview_video_object_key}
+                label="별도 미리보기 영상"
+                objectKeyName="previewVideoObjectKey"
+                uploadKind="preview"
+                urlName={null}
+              />
+            </div>
             <div className={styles.editorFields}>
               <label>
                 <span>작품 제목</span>
@@ -224,7 +237,9 @@ export default async function EditCoursePage({
                         <div>
                           <strong>{lesson.title}</strong>
                           <small>
-                            {content?.video_url ? '영상 연결됨' : '영상 준비중'}
+                            {content?.video_object_key || content?.video_url
+                              ? '영상 연결됨'
+                              : '영상 준비중'}
                           </small>
                         </div>
                         <em>{formatLessonNumber(index)}</em>
@@ -256,6 +271,7 @@ export default async function EditCoursePage({
                           <VideoUploader
                             description="등록된 영상을 교체할 수 있습니다."
                             initialDurationSeconds={lesson.duration_seconds}
+                            initialVideoObjectKey={content?.video_object_key}
                             initialVideoUrl={content?.video_url}
                             label="회차 영상"
                           />

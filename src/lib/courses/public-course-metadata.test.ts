@@ -1,12 +1,47 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  getCoursePreviewHref,
   getCourseGenreLabels,
   getLessonPlaybackHref,
   getPublicCoursePlayback,
 } from './public-course-metadata';
 
 describe('public course playback metadata', () => {
+  it('uses an uploaded preview before the public first episode', () => {
+    expect(
+      getCoursePreviewHref({
+        courseId: 'course-1',
+        hasUploadedPreview: true,
+        lessons: [
+          {
+            id: 'lesson-1',
+            duration_seconds: 146,
+            has_video: true,
+            sort_order: 1,
+          },
+        ],
+      }),
+    ).toBe('/courses/course-1/preview');
+  });
+
+  it('never substitutes a paid later episode for a missing first episode preview', () => {
+    expect(
+      getCoursePreviewHref({
+        courseId: 'course-1',
+        hasUploadedPreview: false,
+        lessons: [
+          {
+            id: 'lesson-2',
+            duration_seconds: 146,
+            has_video: true,
+            sort_order: 2,
+          },
+        ],
+      }),
+    ).toBeNull();
+  });
+
   it('selects the first playable lesson in display order', () => {
     expect(
       getPublicCoursePlayback([
@@ -55,26 +90,52 @@ describe('public course playback metadata', () => {
     expect(
       getLessonPlaybackHref({
         courseId: 'course-1',
-        isEnrolled: true,
+        isRented: true,
         lesson: {
           id: 'lesson-1',
           duration_seconds: null,
           has_video: false,
+          sort_order: 1,
         },
       }),
     ).toBeNull();
   });
 
-  it('creates an episode link only for an enrolled playable lesson', () => {
+  it('creates a public link for the playable first episode', () => {
     expect(
       getLessonPlaybackHref({
         courseId: 'course-1',
-        isEnrolled: true,
+        isRented: false,
         lesson: {
-          id: 'lesson-2',
+          id: 'lesson-1',
           duration_seconds: 146,
           has_video: true,
+          sort_order: 1,
         },
+      }),
+    ).toBe('/courses/course-1/lessons/lesson-1');
+  });
+
+  it('creates later episode links only for individually rented lessons', () => {
+    const lesson = {
+      id: 'lesson-2',
+      duration_seconds: 146,
+      has_video: true,
+      sort_order: 2,
+    };
+
+    expect(
+      getLessonPlaybackHref({
+        courseId: 'course-1',
+        isRented: false,
+        lesson,
+      }),
+    ).toBeNull();
+    expect(
+      getLessonPlaybackHref({
+        courseId: 'course-1',
+        isRented: true,
+        lesson,
       }),
     ).toBe('/courses/course-1/lessons/lesson-2');
   });

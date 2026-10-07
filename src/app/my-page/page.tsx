@@ -6,12 +6,14 @@ import { VideoRoomShell } from '@/components/video-room/VideoRoomShell';
 import { StaffCat, VideoCase } from '@/components/video-room/VideoRoomVisuals';
 import { getUserProfile, requireUser } from '@/lib/auth/server';
 import { groupBy } from '@/lib/collections';
+import { getCourseThumbnailSrc } from '@/lib/courses/course-thumbnail';
 import { partitionMyBagTitles } from '@/lib/courses/video-room-pages';
 
 type CourseRow = {
   id: string;
   title: string;
   description: string | null;
+  thumbnail_image_id: string | null;
   thumbnail_url: string | null;
 };
 
@@ -40,7 +42,7 @@ export default async function MyPage() {
   const { data: courses } = courseIds.length
     ? await supabase
         .from('courses')
-        .select('id, title, description, thumbnail_url')
+        .select('id, title, description, thumbnail_image_id, thumbnail_url')
         .in('id', courseIds)
     : { data: [] };
   const { data: lessons } = courseIds.length
@@ -165,7 +167,7 @@ function BagSection({
                 runtime={
                   course.episodeCount ? `${course.episodeCount}화` : '편성 대기'
                 }
-                thumbnailUrl={course.thumbnail_url}
+                thumbnailUrl={getCourseThumbnailSrc(course)}
                 title={course.title}
               />
               <div className={styles.bagCardCopy}>

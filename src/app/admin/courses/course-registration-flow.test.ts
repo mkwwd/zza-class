@@ -168,6 +168,7 @@ describe('new video registration flow', () => {
     formData.set('sortOrder', '1');
     formData.set('durationSeconds', '146');
     formData.set('videoUrl', 'https://media.example.com/episode.mp4');
+    formData.set('videoObjectKey', 'videos/lesson-1.mp4');
 
     await addLesson('course-1', formData);
 
@@ -181,6 +182,7 @@ describe('new video registration flow', () => {
     expect(contentInsert).toHaveBeenCalledWith({
       content: '',
       lesson_id: 'lesson-1',
+      video_object_key: 'videos/lesson-1.mp4',
       video_url: 'https://media.example.com/episode.mp4',
     });
   });

@@ -24,6 +24,25 @@ describe('ThumbnailUploader', () => {
     expect(markup).toContain('data-preview="poster"');
     expect(markup).toContain('https://media.example.com/poster.jpg');
   });
+
+  it('previews a private cover without saving its proxy URL as data', () => {
+    const markup = renderToStaticMarkup(
+      createElement(ThumbnailUploader, {
+        description: '작품 표지',
+        initialImageId: 'thumbnails/course-1.jpg',
+        initialPreviewUrl: '/api/images/courses/course-1',
+        label: '비디오 표지',
+      }),
+    );
+
+    expect(markup).toContain('/api/images/courses/course-1');
+    expect(markup).toContain('name="thumbnailImageId"');
+    expect(markup).toContain('value="thumbnails/course-1.jpg"');
+    expect(markup).toContain('name="thumbnailUrl"');
+    expect(markup).not.toContain(
+      'name="thumbnailUrl" readonly="" type="hidden" value="/api/images/courses/course-1"',
+    );
+  });
 });
 
 describe('VideoUploader', () => {
@@ -39,6 +58,20 @@ describe('VideoUploader', () => {
 
     expect(markup).toContain('name="durationSeconds"');
     expect(markup).toContain('value="146"');
+  });
+
+  it('submits private object keys without rendering a permanent video URL', () => {
+    const markup = renderToStaticMarkup(
+      createElement(VideoUploader, {
+        description: '회차 영상',
+        initialVideoObjectKey: 'videos/lesson-1.mp4',
+        label: '회차 영상',
+      }),
+    );
+
+    expect(markup).toContain('name="videoObjectKey"');
+    expect(markup).toContain('value="videos/lesson-1.mp4"');
+    expect(markup).not.toContain('https://media.example.com');
   });
 
   it('commits a replacement URL and duration only after both are ready', () => {
