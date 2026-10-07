@@ -1,3 +1,4 @@
+import { canViewLessonContent } from '@/lib/auth/access';
 import { getPrivateVideoPlaybackUrl } from '@/lib/cloudflare/r2';
 import { createClient } from '@/lib/supabase/server';
 import {
@@ -20,6 +21,36 @@ export async function GET(request: Request, { params }: LessonVideoRouteProps) {
 
   const { lessonId } = await params;
   const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const { data: lesson, error: lessonError } = await supabase
+    .from('lessons')
+    .select('id, sort_order')
+    .eq('id', lessonId)
+    .maybeSingle();
+
+  if (lessonError || !lesson) return new Response(null, { status: 404 });
+
+  const { data: rental } =
+    user && lesson.sort_order > 1
+      ? await supabase
+          .from('lesson_rentals')
+          .select('id')
+          .eq('lesson_id', lesson.id)
+          .eq('user_id', user.id)
+          .maybeSingle()
+      : { data: null };
+
+  if (
+    !canViewLessonContent({
+      isRented: Boolean(rental),
+      sortOrder: lesson.sort_order,
+    })
+  ) {
+    return new Response(null, { status: 404 });
+  }
+
   const { data: content, error } = await supabase
     .from('lesson_contents')
     .select('video_object_key, video_url')

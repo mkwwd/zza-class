@@ -10,14 +10,12 @@ export function canManageCourses(role: Role | null | undefined) {
 
 export function canViewLessonContent({
   isRented,
-  role,
   sortOrder,
 }: {
   isRented: boolean;
-  role?: Role | null;
   sortOrder: number;
 }) {
-  return sortOrder === 1 || isAdmin(role) || isRented;
+  return sortOrder === 1 || isRented;
 }
 
 export function getAuthenticatedRedirect(userId?: string | null) {

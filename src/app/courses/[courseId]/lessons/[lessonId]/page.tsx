@@ -72,7 +72,6 @@ export default async function LessonPage({ params }: LessonPageProps) {
   if (
     !canViewLessonContent({
       isRented: Boolean(rental),
-      role: profile?.role,
       sortOrder: lesson.sort_order,
     })
   ) {
@@ -117,7 +116,6 @@ export default async function LessonPage({ params }: LessonPageProps) {
       target?.has_video &&
       canViewLessonContent({
         isRented: rentedLessonIds.has(target.id),
-        role: profile?.role,
         sortOrder: target.sort_order,
       }),
     );

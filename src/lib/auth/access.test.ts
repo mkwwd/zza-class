@@ -22,34 +22,31 @@ describe('access helpers', () => {
   });
 
   it('keeps the first episode public and later episodes rental-only', () => {
+    const unrentedAdminEpisode = {
+      isRented: false,
+      role: 'admin' as const,
+      sortOrder: 3,
+    };
+
     expect(
       canViewLessonContent({
         isRented: false,
-        role: null,
         sortOrder: 1,
       }),
     ).toBe(true);
     expect(
       canViewLessonContent({
         isRented: false,
-        role: 'user',
         sortOrder: 2,
       }),
     ).toBe(false);
     expect(
       canViewLessonContent({
         isRented: true,
-        role: 'user',
         sortOrder: 2,
       }),
     ).toBe(true);
-    expect(
-      canViewLessonContent({
-        isRented: false,
-        role: 'admin',
-        sortOrder: 3,
-      }),
-    ).toBe(true);
+    expect(canViewLessonContent(unrentedAdminEpisode)).toBe(false);
   });
 
   it('redirects missing users to login', () => {
