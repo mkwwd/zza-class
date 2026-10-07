@@ -18,17 +18,11 @@ type R2ObjectKeyInput = {
   objectId: string;
 };
 
-type R2PublicUrlInput = {
-  objectKey: string;
-  publicBaseUrl: string;
-};
-
 type R2Config = {
   accountId: string;
   accessKeyId: string;
   secretAccessKey: string;
   bucketName: string;
-  publicBaseUrl?: string;
 };
 
 export function getR2UploadPreset({ contentType, kind }: R2UploadPresetInput) {
@@ -75,19 +69,6 @@ export function buildR2ObjectKey({
   }`;
 }
 
-export function buildR2PublicUrl({
-  objectKey,
-  publicBaseUrl,
-}: R2PublicUrlInput) {
-  const baseUrl = publicBaseUrl.replace(/\/+$/, '');
-  const cleanKey = objectKey.replace(/^\/+/, '');
-
-  return `${baseUrl}/${cleanKey
-    .split('/')
-    .map((part) => encodeURIComponent(part))
-    .join('/')}`;
-}
-
 export function readR2Config(kind: R2UploadKind): R2Config | null {
   const accountId = process.env.CLOUDFLARE_ACCOUNT_ID;
   const accessKeyId =
@@ -95,20 +76,14 @@ export function readR2Config(kind: R2UploadKind): R2Config | null {
   const secretAccessKey =
     process.env.CLOUDFLARE_R2_SECRET_ACCESS_KEY ??
     process.env.R2_SECRET_ACCESS_KEY;
+  const defaultBucketName =
+    process.env.CLOUDFLARE_R2_BUCKET_NAME ?? process.env.R2_BUCKET_NAME;
   const bucketName =
     kind === 'thumbnail'
-      ? (process.env.CLOUDFLARE_R2_BUCKET_NAME ?? process.env.R2_BUCKET_NAME)
-      : process.env.CLOUDFLARE_R2_VIDEO_BUCKET_NAME;
-  const publicBaseUrl =
-    process.env.CLOUDFLARE_R2_PUBLIC_BASE_URL ?? process.env.R2_PUBLIC_BASE_URL;
+      ? defaultBucketName
+      : process.env.CLOUDFLARE_R2_VIDEO_BUCKET_NAME || defaultBucketName;
 
-  if (
-    !accountId ||
-    !accessKeyId ||
-    !secretAccessKey ||
-    !bucketName ||
-    (kind === 'thumbnail' && !publicBaseUrl)
-  ) {
+  if (!accountId || !accessKeyId || !secretAccessKey || !bucketName) {
     return null;
   }
 
@@ -116,7 +91,6 @@ export function readR2Config(kind: R2UploadKind): R2Config | null {
     accountId,
     accessKeyId,
     bucketName,
-    publicBaseUrl,
     secretAccessKey,
   };
 }
@@ -160,13 +134,7 @@ export async function createR2PutObjectUpload({
 
   return {
     objectKey,
-    publicUrl:
-      kind === 'thumbnail' && r2Config.publicBaseUrl
-        ? buildR2PublicUrl({
-            objectKey,
-            publicBaseUrl: r2Config.publicBaseUrl,
-          })
-        : null,
+    publicUrl: null,
     uploadUrl,
   };
 }
@@ -189,7 +157,14 @@ export async function createR2GetObjectUrl({
 }
 
 export async function getPrivateVideoPlaybackUrl(objectKey: string) {
-  const r2Config = readR2Config('video');
+  return getPrivateR2ObjectUrl(objectKey, 'video');
+}
+
+export async function getPrivateR2ObjectUrl(
+  objectKey: string,
+  kind: R2UploadKind,
+) {
+  const r2Config = readR2Config(kind);
 
   return r2Config ? createR2GetObjectUrl({ objectKey, r2Config }) : null;
 }

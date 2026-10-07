@@ -21,6 +21,7 @@ type MediaUploaderProps = {
   description: string;
   initialObjectKey?: string | null;
   initialDurationSeconds?: number | null;
+  initialPreviewUrl?: string | null;
   initialUrl?: string | null;
   kind: 'preview' | 'thumbnail' | 'video';
   label: string;
@@ -55,6 +56,7 @@ type ThumbnailUploaderProps = {
   imageIdName?: string;
   initialImageId?: string | null;
   initialImageUrl?: string | null;
+  initialPreviewUrl?: string | null;
   label: string;
   urlName?: string;
 };
@@ -76,6 +78,7 @@ export function ThumbnailUploader({
   imageIdName = 'thumbnailImageId',
   initialImageId = '',
   initialImageUrl = '',
+  initialPreviewUrl,
   label,
   urlName = 'thumbnailUrl',
 }: ThumbnailUploaderProps) {
@@ -83,6 +86,7 @@ export function ThumbnailUploader({
     <MediaUploader
       description={description}
       initialObjectKey={initialImageId}
+      initialPreviewUrl={initialPreviewUrl ?? initialImageUrl}
       initialUrl={initialImageUrl}
       kind="thumbnail"
       label={label}
@@ -123,6 +127,7 @@ function MediaUploader({
   durationName,
   initialDurationSeconds = null,
   initialObjectKey = '',
+  initialPreviewUrl,
   initialUrl = '',
   kind,
   label,
@@ -135,6 +140,9 @@ function MediaUploader({
   const uploaderRef = useRef<HTMLDivElement>(null);
   const [objectKey, setObjectKey] = useState(initialObjectKey ?? '');
   const [url, setUrl] = useState(initialUrl ?? '');
+  const [imagePreviewUrl, setImagePreviewUrl] = useState(
+    initialPreviewUrl ?? initialUrl ?? '',
+  );
   const [videoState, dispatchVideo] = useReducer(
     reduceVideoUploadState,
     createVideoUploadState(initialUrl ?? '', initialDurationSeconds),
@@ -145,15 +153,18 @@ function MediaUploader({
   const isVideoPending = isVideo && isVideoUploadPending(videoState);
   const isSubmissionBlocked = isUploading || isVideoPending;
   const committedUrl = isVideo ? videoState.committed.url : url;
-  const previewUrl = isVideo ? videoState.previewUrl : url;
+  const previewUrl = isVideo ? videoState.previewUrl : imagePreviewUrl;
 
   useEffect(
     () => () => {
       if (videoState.previewUrl.startsWith('blob:')) {
         URL.revokeObjectURL(videoState.previewUrl);
       }
+      if (imagePreviewUrl.startsWith('blob:')) {
+        URL.revokeObjectURL(imagePreviewUrl);
+      }
     },
-    [videoState.previewUrl],
+    [imagePreviewUrl, videoState.previewUrl],
   );
 
   useEffect(() => {
@@ -213,8 +224,7 @@ function MediaUploader({
       if (
         !presignedUploadResponse.ok ||
         !presignedUploadPayload.uploadUrl ||
-        !presignedUploadPayload.objectKey ||
-        (!isVideo && !presignedUploadPayload.publicUrl)
+        !presignedUploadPayload.objectKey
       ) {
         throw new Error(
           presignedUploadPayload.error ?? '업로드 URL을 만들지 못했어요.',
@@ -242,12 +252,14 @@ function MediaUploader({
         });
       } else {
         setObjectKey(presignedUploadPayload.objectKey);
-        setUrl(presignedUploadPayload.publicUrl ?? '');
+        setUrl('');
       }
       setMessage('업로드 완료. 저장 버튼을 눌러 반영해 주세요.');
     } catch (error) {
       if (isVideo) {
         dispatchVideo({ type: 'upload-failed' });
+      } else {
+        setImagePreviewUrl(initialPreviewUrl ?? initialUrl ?? '');
       }
       setMessage(
         error instanceof Error
@@ -310,6 +322,8 @@ function MediaUploader({
                 type: 'replacement-selected',
               });
               setDurationMessage('');
+            } else {
+              setImagePreviewUrl(URL.createObjectURL(file));
             }
             void uploadFile(file);
           }

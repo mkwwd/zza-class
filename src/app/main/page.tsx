@@ -13,6 +13,7 @@ import { redirect } from 'next/navigation';
 import { isAdmin } from '@/lib/auth/access';
 import { getUserProfile } from '@/lib/auth/server';
 import { groupBy } from '@/lib/collections';
+import { getCourseThumbnailSrc } from '@/lib/courses/course-thumbnail';
 import {
   getCourseGenreLabels,
   getPublicCoursePlayback,
@@ -41,6 +42,7 @@ type CourseRow = {
   id: string;
   title: string;
   description: string | null;
+  thumbnail_image_id: string | null;
   thumbnail_url: string | null;
 };
 
@@ -210,7 +212,7 @@ export default async function MainPage({ searchParams }: MainPageProps) {
       .order('created_at', { ascending: false }),
     supabase
       .from('courses')
-      .select('id, title, description, thumbnail_url')
+      .select('id, title, description, thumbnail_image_id, thumbnail_url')
       .eq('status', 'published')
       .order('created_at', { ascending: false }),
   ]);
@@ -271,7 +273,7 @@ export default async function MainPage({ searchParams }: MainPageProps) {
         id: course.id,
         title: course.title,
         description: course.description,
-        thumbnailUrl: course.thumbnail_url,
+        thumbnailUrl: getCourseThumbnailSrc(course),
         lessonCount: courseLessons.length,
         hasPlayableVideo: playback.hasPlayableVideo,
         isEnrolled: enrolledCourseIds.has(course.id),

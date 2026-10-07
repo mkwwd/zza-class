@@ -42,10 +42,7 @@ export async function POST(request: Request) {
   if (!r2Config) {
     return NextResponse.json(
       {
-        error:
-          kind === 'thumbnail'
-            ? 'Cloudflare R2 공개 버킷 환경 변수를 설정해 주세요.'
-            : 'Cloudflare R2 비공개 영상 버킷 환경 변수를 설정해 주세요.',
+        error: 'Cloudflare R2 비공개 미디어 버킷 환경 변수를 설정해 주세요.',
       },
       { status: 503 },
     );

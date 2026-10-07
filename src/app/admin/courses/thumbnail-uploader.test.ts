@@ -24,6 +24,25 @@ describe('ThumbnailUploader', () => {
     expect(markup).toContain('data-preview="poster"');
     expect(markup).toContain('https://media.example.com/poster.jpg');
   });
+
+  it('previews a private cover without saving its proxy URL as data', () => {
+    const markup = renderToStaticMarkup(
+      createElement(ThumbnailUploader, {
+        description: '작품 표지',
+        initialImageId: 'thumbnails/course-1.jpg',
+        initialPreviewUrl: '/api/images/courses/course-1',
+        label: '비디오 표지',
+      }),
+    );
+
+    expect(markup).toContain('/api/images/courses/course-1');
+    expect(markup).toContain('name="thumbnailImageId"');
+    expect(markup).toContain('value="thumbnails/course-1.jpg"');
+    expect(markup).toContain('name="thumbnailUrl"');
+    expect(markup).not.toContain(
+      'name="thumbnailUrl" readonly="" type="hidden" value="/api/images/courses/course-1"',
+    );
+  });
 });
 
 describe('VideoUploader', () => {

@@ -4,6 +4,7 @@ import { isAdmin } from '@/lib/auth/access';
 import { getUserProfile } from '@/lib/auth/server';
 import { groupBy } from '@/lib/collections';
 import { getTapeDisplay } from '@/lib/courses/course-display';
+import { getCourseThumbnailSrc } from '@/lib/courses/course-thumbnail';
 import {
   getPublicCoursePlayback,
   type PublicLessonMetadata,
@@ -36,7 +37,7 @@ export default async function CoursesPage() {
   const profile = user ? await getUserProfile(supabase, user.id) : null;
   const { data: courses } = await supabase
     .from('courses')
-    .select('id, title, description, thumbnail_url')
+    .select('id, title, description, thumbnail_image_id, thumbnail_url')
     .eq('status', 'published')
     .order('created_at', { ascending: false });
   const courseIds = (courses ?? []).map((course) => course.id);
@@ -76,7 +77,7 @@ export default async function CoursesPage() {
       id: course.id,
       title: course.title,
       description: course.description,
-      thumbnailUrl: course.thumbnail_url,
+      thumbnailUrl: getCourseThumbnailSrc(course),
       hasPlayableVideo: playback.hasPlayableVideo,
       display: getTapeDisplay({
         index,

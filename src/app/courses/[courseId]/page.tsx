@@ -20,6 +20,7 @@ import {
 } from '@/components/video-room/VideoRoomVisuals';
 import { getUserProfile } from '@/lib/auth/server';
 import { getTapeDisplay } from '@/lib/courses/course-display';
+import { getCourseThumbnailSrc } from '@/lib/courses/course-thumbnail';
 import { formatGenreLabels } from '@/lib/courses/genres';
 import {
   getCourseGenreLabels,
@@ -58,7 +59,7 @@ export default async function CourseDetailPage({
   const { data: course, error: courseError } = await supabase
     .from('courses')
     .select(
-      'id, title, description, staff_note, status, thumbnail_url, preview_video_object_key',
+      'id, title, description, staff_note, status, thumbnail_image_id, thumbnail_url, preview_video_object_key',
     )
     .eq('id', courseId)
     .maybeSingle();
@@ -158,7 +159,7 @@ export default async function CourseDetailPage({
           <div className={styles.detailArtwork}>
             <VideoCase
               runtime={tape.runtimeLabel}
-              thumbnailUrl={course.thumbnail_url}
+              thumbnailUrl={getCourseThumbnailSrc(course)}
               title={course.title}
             />
           </div>

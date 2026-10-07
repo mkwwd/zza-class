@@ -6,6 +6,7 @@ import styles from '@/app/video-room-pages.module.css';
 import { VideoRoomShell } from '@/components/video-room/VideoRoomShell';
 import { VhsTape } from '@/components/video-room/VideoRoomVisuals';
 import { getUserProfile } from '@/lib/auth/server';
+import { getCourseThumbnailSrc } from '@/lib/courses/course-thumbnail';
 import { createClient, hasSupabaseEnv } from '@/lib/supabase/server';
 import { buildPreviewPlaybackPath } from '@/lib/videos/playback-proxy';
 
@@ -27,7 +28,9 @@ export default async function PreviewPage({ params }: PreviewPageProps) {
   const [{ data: course }, { count: bagCount }] = await Promise.all([
     supabase
       .from('courses')
-      .select('id, title, thumbnail_url, preview_video_object_key')
+      .select(
+        'id, title, thumbnail_image_id, thumbnail_url, preview_video_object_key',
+      )
       .eq('id', courseId)
       .maybeSingle(),
     user
@@ -89,7 +92,7 @@ export default async function PreviewPage({ params }: PreviewPageProps) {
               {previewUrl ? (
                 <video
                   controls
-                  poster={course.thumbnail_url || undefined}
+                  poster={getCourseThumbnailSrc(course) || undefined}
                   src={previewUrl}
                 />
               ) : (

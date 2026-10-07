@@ -2,7 +2,6 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import {
   buildR2ObjectKey,
-  buildR2PublicUrl,
   createR2PutObjectUpload,
   getR2UploadPreset,
   readR2Config,
@@ -51,15 +50,6 @@ describe('R2 upload helpers', () => {
     ).toBe('previews/course-123-teaser.mp4');
   });
 
-  it('joins the public base URL and object key without duplicate slashes', () => {
-    expect(
-      buildR2PublicUrl({
-        objectKey: 'videos/lesson-1.mp4',
-        publicBaseUrl: 'https://media.example.com/',
-      }),
-    ).toBe('https://media.example.com/videos/lesson-1.mp4');
-  });
-
   it('accepts images only for thumbnail uploads', () => {
     expect(
       getR2UploadPreset({ contentType: 'image/webp', kind: 'thumbnail' }),
@@ -93,20 +83,31 @@ describe('R2 upload helpers', () => {
     });
   });
 
-  it('uses a dedicated private bucket for video uploads', () => {
+  it('uses one private bucket when a dedicated video bucket is not configured', () => {
     vi.stubEnv('CLOUDFLARE_ACCOUNT_ID', 'account-1');
     vi.stubEnv('CLOUDFLARE_R2_ACCESS_KEY_ID', 'access-key');
     vi.stubEnv('CLOUDFLARE_R2_SECRET_ACCESS_KEY', 'secret-key');
-    vi.stubEnv('CLOUDFLARE_R2_BUCKET_NAME', 'public-assets');
-    vi.stubEnv('CLOUDFLARE_R2_PUBLIC_BASE_URL', 'https://media.example.com');
+    vi.stubEnv('CLOUDFLARE_R2_BUCKET_NAME', 'private-media');
+    vi.stubEnv('CLOUDFLARE_R2_PUBLIC_BASE_URL', '');
+    vi.stubEnv('CLOUDFLARE_R2_VIDEO_BUCKET_NAME', '');
+
+    expect(readR2Config('video')).toMatchObject({
+      bucketName: 'private-media',
+    });
+    expect(readR2Config('thumbnail')).toMatchObject({
+      bucketName: 'private-media',
+    });
+  });
+
+  it('uses the dedicated video bucket when one is configured', () => {
+    vi.stubEnv('CLOUDFLARE_ACCOUNT_ID', 'account-1');
+    vi.stubEnv('CLOUDFLARE_R2_ACCESS_KEY_ID', 'access-key');
+    vi.stubEnv('CLOUDFLARE_R2_SECRET_ACCESS_KEY', 'secret-key');
+    vi.stubEnv('CLOUDFLARE_R2_BUCKET_NAME', 'private-media');
     vi.stubEnv('CLOUDFLARE_R2_VIDEO_BUCKET_NAME', 'private-videos');
 
     expect(readR2Config('video')).toMatchObject({
       bucketName: 'private-videos',
-    });
-    expect(readR2Config('thumbnail')).toMatchObject({
-      bucketName: 'public-assets',
-      publicBaseUrl: 'https://media.example.com',
     });
   });
 
@@ -120,13 +121,33 @@ describe('R2 upload helpers', () => {
         accountId: 'account-1',
         accessKeyId: 'access-key',
         bucketName: 'private-videos',
-        publicBaseUrl: 'https://media.example.com',
         secretAccessKey: 'secret-key',
       },
     });
 
     expect(upload).toEqual({
       objectKey: 'videos/lesson-1-episode.mp4',
+      publicUrl: null,
+      uploadUrl: 'https://signed.example/upload',
+    });
+  });
+
+  it('never returns a permanent public URL for thumbnail uploads', async () => {
+    const upload = await createR2PutObjectUpload({
+      contentType: 'image/jpeg',
+      fileName: 'poster.jpg',
+      kind: 'thumbnail',
+      objectId: 'course-1',
+      r2Config: {
+        accountId: 'account-1',
+        accessKeyId: 'access-key',
+        bucketName: 'private-media',
+        secretAccessKey: 'secret-key',
+      },
+    });
+
+    expect(upload).toEqual({
+      objectKey: 'thumbnails/course-1-poster.jpg',
       publicUrl: null,
       uploadUrl: 'https://signed.example/upload',
     });

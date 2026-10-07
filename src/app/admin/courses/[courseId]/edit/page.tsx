@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation';
 
 import { VideoRoomShell } from '@/components/video-room/VideoRoomShell';
 import { requireAdmin } from '@/lib/auth/server';
+import { getCourseThumbnailSrc } from '@/lib/courses/course-thumbnail';
 import type { GenreOption, GenreSlug } from '@/lib/courses/genres';
 import { formatLessonNumber } from '@/lib/courses/lesson-display';
 
@@ -118,6 +119,7 @@ export default async function EditCoursePage({
                 description="메인 선반과 상세 화면의 대표 이미지입니다."
                 initialImageId={course.thumbnail_image_id}
                 initialImageUrl={course.thumbnail_url}
+                initialPreviewUrl={getCourseThumbnailSrc(course)}
                 label="비디오 표지"
               />
               <VideoUploader
