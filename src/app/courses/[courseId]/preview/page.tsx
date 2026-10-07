@@ -6,8 +6,8 @@ import styles from '@/app/video-room-pages.module.css';
 import { VideoRoomShell } from '@/components/video-room/VideoRoomShell';
 import { VhsTape } from '@/components/video-room/VideoRoomVisuals';
 import { getUserProfile } from '@/lib/auth/server';
-import { getPrivateVideoPlaybackUrl } from '@/lib/cloudflare/r2';
 import { createClient, hasSupabaseEnv } from '@/lib/supabase/server';
+import { buildPreviewPlaybackPath } from '@/lib/videos/playback-proxy';
 
 type PreviewPageProps = {
   params: Promise<{ courseId: string }>;
@@ -55,7 +55,7 @@ export default async function PreviewPage({ params }: PreviewPageProps) {
   }
 
   const previewUrl = course.preview_video_object_key
-    ? await getPrivateVideoPlaybackUrl(course.preview_video_object_key)
+    ? buildPreviewPlaybackPath(course.id)
     : null;
 
   return (

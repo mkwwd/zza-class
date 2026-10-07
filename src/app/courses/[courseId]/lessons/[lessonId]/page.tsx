@@ -14,9 +14,9 @@ import { VideoRoomShell } from '@/components/video-room/VideoRoomShell';
 import { VhsTape } from '@/components/video-room/VideoRoomVisuals';
 import { canViewLessonContent } from '@/lib/auth/access';
 import { getUserProfile } from '@/lib/auth/server';
-import { getPrivateVideoPlaybackUrl } from '@/lib/cloudflare/r2';
 import { getEpisodeNavigation } from '@/lib/courses/video-room-pages';
 import { createClient, hasSupabaseEnv } from '@/lib/supabase/server';
+import { buildLessonPlaybackPath } from '@/lib/videos/playback-proxy';
 
 import { markLessonComplete } from '../../../actions';
 
@@ -83,7 +83,7 @@ export default async function LessonPage({ params }: LessonPageProps) {
     await Promise.all([
       supabase
         .from('lesson_contents')
-        .select('content, video_object_key, video_url')
+        .select('content')
         .eq('lesson_id', lesson.id)
         .maybeSingle(),
       user
@@ -105,9 +105,9 @@ export default async function LessonPage({ params }: LessonPageProps) {
   const rentedLessonIds = new Set(
     (rentals ?? []).map((item) => item.lesson_id),
   );
-  const videoSource = lessonContent?.video_object_key
-    ? await getPrivateVideoPlaybackUrl(lessonContent.video_object_key)
-    : lessonContent?.video_url || null;
+  const videoSource = lesson.has_video
+    ? buildLessonPlaybackPath(lesson.id)
+    : null;
   const navigation = getEpisodeNavigation(lessons ?? [], lesson.id);
   const canOpenLesson = (targetId: string | null) => {
     const target = lessons?.find((item) => item.id === targetId);
